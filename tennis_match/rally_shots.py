@@ -28,7 +28,7 @@ def applying_aggression(aggression, balance):
 
 
 def rally_shot(skill, aggression, balance, shot_selection, mobility):
-    shot_factor = 0.7 + balance / 500.0 + 6 * skill / 10000.0 + 3 * skill * mobility / 1000000.0 \
+    shot_factor = 0.71 + balance / 500.0 + 5 * skill / 10000.0 + 3 * skill * mobility / 1000000.0 \
                   + (shot_selection * (10 - aggression / 2)) / 25000.0
     # print(shot_factor)
     shot_factor -= max((aggression - (skill + mobility / 3.0) / 27.0), 1.0) / 20.0 * (1 - shot_factor)
