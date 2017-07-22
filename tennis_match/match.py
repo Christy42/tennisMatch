@@ -1,16 +1,18 @@
 import random
-import time
 
 from tennis_match.point import play_point
-from utility.utility import diff, divide_diff_by_int
+from utility.utility import diff
 
 
-def singles_match(players, max_sets, tie_break_last_set, stats={0: {}, 1: {}}):
+def singles_match(players, max_sets, tie_break_last_set, stats=None):
+    if not stats:
+        stats = {}
+        for i in range(len(players)):
+            stats.update({i: {}})
     sets_won = [0, 0]
-    print(1)
     for player in players:
         player["stamina"] = 1000
-    server = random.randint(0, 1)
+    server = random.randint(0, len(players))
     players = set_base_attributes(players)
     while max(sets_won) < max_sets / 2.0 + 0.5:
         result = set_winner(players, server, tie_break_last_set or sum(sets_won) < max_sets, stats)
@@ -19,7 +21,8 @@ def singles_match(players, max_sets, tie_break_last_set, stats={0: {}, 1: {}}):
         stats = result["stats"]
     if sets_won[0] == max(sets_won):
         return {"winner": 0, "stats": stats}
-    return {"winner": 1, "stats": stats}
+
+    return {"winner": 1, "stats": stats, "stamina": [players[0]["stamina"], players[1]["stamina"]]}
 
 
 def set_winner(players, server, tie_break_last_set, stats):
