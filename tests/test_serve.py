@@ -1,9 +1,12 @@
 from tennis_match import serve
+from unittest import mock
 
 
-def test_serve_balance():
-    assert -36.25 <= serve.serve_balance(5, 50, 50, 50) <= -1.25
-    assert -33.5 <= serve.serve_balance(1, 70, 70, 0) <= 1.5
+@mock.patch('random.randint')
+def test_serve_balance(mocked):
+    mocked.return_value = 0
+    assert serve.serve_balance(5, 50, 50, 50) == -16.25
+    assert serve.serve_balance(1, 70, 70, 0) == -13.5
 
 
 def test_serve_in():

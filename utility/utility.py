@@ -1,4 +1,4 @@
-from random import randint
+import random
 
 
 def diff(elements):
@@ -16,6 +16,6 @@ def divide_diff_by_int(dictionary, number):
 def repeated_random(lower, upper, rolls):
     total = 0
     for _ in range(rolls):
-        total += randint(lower, upper)
+        total += random.randint(lower, upper)
 
     return total / float(rolls)
