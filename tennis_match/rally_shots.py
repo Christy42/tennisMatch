@@ -28,11 +28,11 @@ def applying_aggression(aggression, balance):
 
 
 def rally_shot(skill, aggression, balance, shot_selection, mobility):
-    shot_factor = 0.71 + balance / 500.0 + 5 * skill / 10000.0 + 3 * skill * mobility / 1000000.0 \
+    shot_factor = 0.72 + balance / 500.0 + 5 * skill / 10000.0 + 2 * skill * mobility / 1000000.0 \
                   + (shot_selection * (10 - aggression / 2)) / 25000.0
     # print(shot_factor)
-    shot_factor -= max((aggression - (skill + mobility / 3.0) / 27.0), 1.0) / 20.0 * (1 - shot_factor)
-    shot_factor -= max((aggression - (skill + mobility / 3.0) / 27.0), 1.0) / 20.0 * (1 - shot_factor)
+    shot_factor -= max((aggression - (skill + mobility) / 50.0), 1.0) / 20.0 * (1 - shot_factor)
+    shot_factor -= max((aggression - (skill + mobility) / 50.0), 1.0) / 20.0 * (1 - shot_factor)
     # print(shot_factor)
     # print("X")
     return random.random() < shot_factor or random.random() * 1.5 < shot_factor
@@ -72,8 +72,8 @@ def rally(players, initial_balance, next_hit):
 def balance_change(skill, aggression, balance, mobility, strength):
     random_eff = random.randint(-20, 15)
     if balance > 0:
-        return - balance / 5 + aggression * 1.9 * strength / 100 + strength / 20.0 + skill / 25.0\
+        return - balance / 5 + aggression * 1.9 * strength / 100 + strength / 20.0 \
                - max(min(mobility / 4.0, aggression * 1.5 + random_eff + skill / 19.0), 0) + random_eff
     else:
-        return - balance / 2 * (balance > -50) + aggression * 1.9 * strength / 100 + strength / 20.0 + skill / 25.0\
+        return - balance / 2 * (balance > -50) + aggression * 1.9 * strength / 100 + strength / 20.0 \
                - max(min(mobility / 4.0, aggression * 1.5 + random_eff + skill / 19.0), 0) + random_eff
