@@ -20,9 +20,6 @@ def singles_match(players, max_sets, tie_break_last_set, stats=None):
         sets_won[result["winner"]] += 1
         server = result["server"]
         stats = result["stats"]
-        print("stamina")
-        print(players[0]["stamina"])
-        print(players[1]["stamina"])
     stamina_return = [players[i]["stamina"] for i in range(len(players))]
     return {"winner": arg_max(sets_won), "stats": stats, "stamina": stamina_return}
 
@@ -63,8 +60,11 @@ def tie_break(players, server, stats):
 
 def play_game(players, server, stats):
     score = [0, 0]
+    receiver_list = [0, 1] if server in [2, 3] else [2, 3]
+    receiver = 0
     while max(score) < 4 or diff(score) < 2:
-        result = play_point(players, server, stats)
+        result = play_point(players, server, stats, receiver_list[receiver])
+        receiver = (receiver + 1) % 2
         score[result["winner"]] += 1
         stats = result["stats"]
         for i in range(len(players)):

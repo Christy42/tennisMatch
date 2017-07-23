@@ -3,7 +3,7 @@ import random
 from tennis_match import rally_shots, serve
 
 
-def play_point(players, server, stats):
+def play_point(players, server, stats, returner=None):
     second_serve = False
     serve_aggression = players[server]["first serve aggression"]
     stats[server]["First Serve"] = 1 + stats[server].get("First Serve", 0)
