@@ -19,3 +19,17 @@ def repeated_random(lower, upper, rolls):
         total += random.randint(lower, upper)
 
     return total / float(rolls)
+
+
+def add_lists(list_one, list_two):
+    sum_list = []
+    for i in range(len(list_one)):
+        sum_list.append(list_one[i] + list_two[i])
+    return sum_list
+
+
+def arg_max(the_list):
+    largest = max(the_list)
+    for i in range(len(the_list)):
+        if the_list[i] == largest:
+            return i
