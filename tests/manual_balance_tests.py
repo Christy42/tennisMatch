@@ -1,6 +1,6 @@
 from tennis_match import match
 import time
-from utility.utility import divide_diff_by_int
+from utility.utility import divide_diff_by_int, add_lists
 
 basic_Value = 50
 
@@ -18,22 +18,26 @@ def define_player_plain(basic_value):
             "shot selection": basic_value, "aggression": 5, "fitness": basic_value,
             "first serve aggression": 6, "second serve aggression": 3}
 
-player_zero = define_player()
-player_one = define_player(accuracy=60)
-print(player_zero["mobility"])
-print(player_one["mobility"])
-players = [player_zero, player_one]
 
-loops = 1000
+def set_players():
+    player_zero = define_player()
+    player_one = define_player(fitness=0)
+    return [player_zero, player_one]
+
+
+loops = 10
 total = 0
 stats = {}
+stamina = [0, 0]
 start = time.time()
 for i in range(loops):
-    result = match.singles_match(players, 5, True, stats=stats)
+    result = match.singles_match(set_players(), 3, True, stats=stats)
     total += result["winner"]
     stats = result["stats"]
+    stamina = add_lists(result["stamina"], stamina)
     print("{}: {}".format(i, total))
 end = time.time()
 print((end - start) / float(loops))
 print(total / float(loops))
 print(divide_diff_by_int(stats, loops))
+print(stamina[0] / float(loops))
