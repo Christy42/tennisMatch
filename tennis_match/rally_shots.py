@@ -1,5 +1,6 @@
 import random
 import yaml
+import os
 
 
 def shot_selection_effect(shot_skill, balance):
@@ -9,7 +10,7 @@ def shot_selection_effect(shot_skill, balance):
 
 
 def applying_aggression(aggression, balance):
-    with open("aggression.yaml", "r") as agg_file:
+    with open(os.environ["TENNIS_HOME"] + "//" + "aggression.yaml", "r") as agg_file:
         table = yaml.safe_load(agg_file)
     section = ""
     for element in table["balance"]:
@@ -28,13 +29,12 @@ def applying_aggression(aggression, balance):
 
 
 def rally_shot(skill, aggression, balance, shot_selection, mobility):
-    shot_factor = 0.72 + balance / 500.0 + 5 * skill / 10000.0 + 2 * skill * mobility / 1000000.0 \
-                  + (shot_selection * (10 - aggression / 2)) / 25000.0
+    shot_factor = 0.73 + balance / 500.0 + 5 * (skill - 10) / 15000.0 + skill * mobility / 1500000.0 \
+                  + (shot_selection * (10 - aggression / 2)) / 30000.0
     # print(shot_factor)
-    shot_factor -= max((aggression - (skill + mobility) / 50.0), 1.0) / 20.0 * (1 - shot_factor)
-    shot_factor -= max((aggression - (skill + mobility) / 50.0), 1.0) / 20.0 * (1 - shot_factor)
+    shot_factor -= max((aggression - (skill + mobility) / 100.0), 1.0) / 20.0 * (1 - shot_factor)
+    shot_factor -= max((aggression - (skill + mobility) / 100.0), 1.0) / 20.0 * (1 - shot_factor)
     # print(shot_factor)
-    # print("X")
     return random.random() < shot_factor or random.random() * 1.5 < shot_factor
 
 
