@@ -2,7 +2,7 @@ import random
 from math import floor
 
 from tennis_match.point import play_point
-from utility.utility import diff
+from utility.utility import diff, arg_max
 
 
 def singles_match(players, max_sets, tie_break_last_set, stats=None):
@@ -20,10 +20,11 @@ def singles_match(players, max_sets, tie_break_last_set, stats=None):
         sets_won[result["winner"]] += 1
         server = result["server"]
         stats = result["stats"]
-    if sets_won[0] == max(sets_won):
-        return {"winner": 0, "stats": stats}
+        print("stamina")
+        print(players[0]["stamina"])
+        print(players[1]["stamina"])
     stamina_return = [players[i]["stamina"] for i in range(len(players))]
-    return {"winner": 1, "stats": stats, "stamina": stamina_return}
+    return {"winner": arg_max(sets_won), "stats": stats, "stamina": stamina_return}
 
 
 def set_winner(players, server, tie_break_last_set, stats):
@@ -42,7 +43,7 @@ def set_winner(players, server, tie_break_last_set, stats):
             games_won[res["winner"]] += 2
         stats = result["stats"]
     for i in range(len(players)):
-        stats[i]["game won"] = games_won[floor(i / 2)] + stats[i].get("game won", 0)
+        stats[i]["game won"] = games_won[floor(i / (len(players) / 2))] + stats[i].get("game won", 0)
     if games_won[0] == max(games_won):
         return {"winner": 0, "server": server, "stats": stats}
     return {"winner": 1, "server": server, "stats": stats}
@@ -57,9 +58,7 @@ def tie_break(players, server, stats):
         played += 1
         if played % 2 == 1:
             server = (server + 1) % 2
-    if points[0] > points[1]:
-        return {"winner": 0}
-    return {"winner": 1}
+    return {"winner": arg_max(points)}
 
 
 def play_game(players, server, stats):
@@ -68,25 +67,26 @@ def play_game(players, server, stats):
         result = play_point(players, server, stats)
         score[result["winner"]] += 1
         stats = result["stats"]
-        for i in range(4):
+        for i in range(len(players)):
             players[i]["stamina"] -= result["rally"] / 2.0 * (1.1 - players[i]["fitness"] / 146.0)
             players[i]["stamina"] = max(players[i]["stamina"], 0.0)
         players = stamina_effect(players)
-    stats[0]["points"] = score[0] + stats[0].get("points", 0)
-    stats[1]["points"] = score[1] + stats[1].get("points", 0)
-    if score[0] == max(score):
-        return {"winner": 0, "stats": stats}
-    return {"winner": 1, "stats": stats}
+    for i in range(len(players)):
+        stats[i]["points"] = score[floor(i / (len(players) / 2))] + stats[i].get("points", 0)
+    return {"winner": arg_max(score), "stats": stats}
 
 
 def stamina_effect(players):
     for i in range(len(players)):
         base_val = (players[i]["stamina"] < 500) * 0.2 + (players[i]["stamina"] < 300) * 0.1 + \
                    0.1 * (players[i]["stamina"] == 0)
+        higher_val = base_val + 0.2 if base_val > 0 else 0
         for attribute in ["mobility", "strength"]:
-            players[i][attribute] *= ((base_val + 0.2) * players[i]["stamina"] / 500.0 + 1 - base_val - 0.2)
+            players[i][attribute] = players[i]["base " + attribute] * \
+                (higher_val * players[i]["stamina"] / 500.0 + 1 - higher_val)
         for attribute in ["accuracy", "serve"]:
-            players[i][attribute] *= (base_val * players[i]["stamina"] / 500.0 + 1 - base_val)
+            players[i][attribute] = players[i]["base " + attribute] * \
+                (base_val * players[i]["stamina"] / 500.0 + 1 - base_val)
     return players
 
 
