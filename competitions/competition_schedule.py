@@ -61,7 +61,7 @@ def create_groups(numbers, seeded_players):
     return sorting
 
 
-def create_schedule(numbers, seeded_players, year, competition_name, start_day=1):
+def create_schedule(numbers, seeded_players, year, competition_name, start_day=1, qualification_rounds=999):
     sorting = create_groups(numbers, seeded_players)
     final = []
     for i in range(len(sorting)):
@@ -74,22 +74,23 @@ def create_schedule(numbers, seeded_players, year, competition_name, start_day=1
         days[len(days) - 1] = 0
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "w") \
             as file:
-        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign ups": []}, file)
+        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign ups": [], "rounds played": 0,
+                        "qualification rounds": qualification_rounds}, file)
 
 
-def run_next_round(year, competition_name, qualification_rounds=None):
+def run_next_round(year, competition_name):
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "r") \
        as file:
         competition = yaml.safe_load(file)
     if "round 2" not in competition.keys():
         competition["seeds"] = set_seeds(competition["sign ups"])
-    qualification_rounds = numbers if qualification_rounds is None else qualification_rounds
-    players_left = schedule
-    print(players_left)
-    rounds_played = 0
 
-    while len(players_left) > 1 and rounds_played < qualification_rounds:
-        rounds_played += 1
+    players_left = competition["round " + str(competition["rounds played"] + 1)]
+
+    if competition["rounds played"] + 1 < competition["qualification rounds"]:
+        # TODO: Stick in a way to grab relevant players here, need to have the players first
+        # Need: a way to label the relevant seeds as byes
+        competition["rounds played"] += 1
         next_round = []
         for i in range(int(len(players_left) / 2)):
             score_one = randint(0, 100) + players_left[2 * i] + 200 * (players_left[2 * i] > numbers)
@@ -99,8 +100,9 @@ def run_next_round(year, competition_name, qualification_rounds=None):
                 next_round.append(players_left[2 * i])
             else:
                 next_round.append(players_left[2 * i + 1])
-        players_left = next_round
+        competition["round " + str(competition["rounds played"] + 1)] = next_round
         print("")
         print(players_left)
-    print(players_left)
-    return players_left
+    with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "w") \
+     as file:
+        yaml.safe_dump(competition, file)
