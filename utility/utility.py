@@ -28,8 +28,10 @@ def add_lists(list_one, list_two):
 
 
 def arg_max(the_list):
-    largest = max(the_list)
-    for i in range(len(the_list)):
+    if type(the_list) == list:
+        the_list = {i: the_list[i] for i in range(len(the_list))}
+    largest = max(the_list.values())
+    for i in the_list:
         if the_list[i] == largest:
             return i
 

@@ -3,15 +3,21 @@ from math import log
 import os
 import yaml
 
-from utility.utility import shift_bit_length
+from utility.utility import shift_bit_length, arg_max
 
 
-def set_seeds(seeded, sign_ups):
+def set_seeds(sign_ups):
     rank = {}
     for player in sign_ups:
         with open(os.environ["TENNIS_HOME"] + "//player//players//Player_" + player + ".yaml", "r") as file:
             rank = yaml.safe_load(file)["ranking"]
             rank.update({rank, player})
+    seedings = {}
+    for i in range(len(sign_ups)):
+        next_seed = arg_max(rank)
+        seedings.update({i: next_seed})
+        del rank[next_seed]
+    return seedings
 
 
 def create_groups(numbers, seeded_players):
@@ -68,16 +74,15 @@ def create_schedule(numbers, seeded_players, year, competition_name, start_day=1
         days[len(days) - 1] = 0
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "w") \
             as file:
-        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign up": []}, file)
+        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign ups": []}, file)
 
 
 def run_next_round(year, competition_name, qualification_rounds=None):
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "r") \
        as file:
         competition = yaml.safe_load(file)
-    schedule = create_schedule(numbers, seeded_players)
-    # TODO: Change this to read this information from a file.
-    # TODO: Should not run each round in quick succession but stagger them out.
+    if "round 2" not in competition.keys():
+        competition["seeds"] = set_seeds(competition["sign ups"])
     qualification_rounds = numbers if qualification_rounds is None else qualification_rounds
     players_left = schedule
     print(players_left)
