@@ -1,8 +1,8 @@
-from random import randint
+import random
 
 
 def serve_balance(serve_aggression, serve, strength, mobility):
-    balance = max(round(serve_aggression * 3 + serve / 15.0 + strength / 12.0 + randint(-15, +20) -
+    balance = max(round(serve_aggression * 3 + serve / 15.0 + strength / 12.0 + random.randint(-15, +20) -
                         mobility / 8.0, 2), 0)
     return -balance
 

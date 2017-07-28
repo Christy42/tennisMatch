@@ -1,2 +1,5 @@
 .idea*
-*/__pycache__/*
+*.pyc
+.tox*
+.cache*
+tennis.egg-info*
