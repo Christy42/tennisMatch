@@ -1,9 +1,17 @@
 from random import randint
 from math import log
 import os
+import yaml
+
+from utility.utility import shift_bit_length
 
 
-from utility import shift_bit_length
+def set_seeds(seeded, sign_ups):
+    rank = {}
+    for player in sign_ups:
+        with open(os.environ["TENNIS_HOME"] + "//player//players//Player_" + player + ".yaml", "r") as file:
+            rank = yaml.safe_load(file)["ranking"]
+            rank.update({rank, player})
 
 
 def create_groups(numbers, seeded_players):
@@ -47,7 +55,7 @@ def create_groups(numbers, seeded_players):
     return sorting
 
 
-def create_schedule(numbers, seeded_players, start_date=1):
+def create_schedule(numbers, seeded_players, year, competition_name, start_day=1):
     sorting = create_groups(numbers, seeded_players)
     final = []
     for i in range(len(sorting)):
@@ -55,14 +63,18 @@ def create_schedule(numbers, seeded_players, start_date=1):
     sub_set = final[int(len(final) / 2):]
     sub_set = sub_set[::-1]
     final = final[:int(len(final) / 2)] + sub_set
-    days = [(start_date + x * 2) % 7 for x in range(int(log(numbers, 2)))]
+    days = [(start_day + x * 2) % 7 for x in range(int(log(numbers, 2)))]
     if days[len(days) - 1] == 6 or days[len(days) - 1] == 1:
         days[len(days) - 1] = 0
-    # TODO: Write these details to a file?
-    return final, days
+    with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "w") \
+            as file:
+        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign up": []}, file)
 
 
-def run_competition(numbers, seeded_players, qualification_rounds=None, start_date=1):
+def run_next_round(year, competition_name, qualification_rounds=None):
+    with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "r") \
+       as file:
+        competition = yaml.safe_load(file)
     schedule = create_schedule(numbers, seeded_players)
     # TODO: Change this to read this information from a file.
     # TODO: Should not run each round in quick succession but stagger them out.
@@ -87,5 +99,3 @@ def run_competition(numbers, seeded_players, qualification_rounds=None, start_da
         print(players_left)
     print(players_left)
     return players_left
-
-run_competition(24, 8, 4)
