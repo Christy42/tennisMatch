@@ -1,0 +1,4 @@
+offensive baseliner: {strength: 1.5, accuracy: 90}
+defensive baseliner: {mobility: 1.5}
+serve and volley: {mobility: 0.8, shot_selection: 1.5}
+all court: {}

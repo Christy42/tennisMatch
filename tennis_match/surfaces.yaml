@@ -1,0 +1,4 @@
+clay: {strength: 0.5, mobility: 1.5, accuracy: 20}
+grass: {accuracy: -10, strength: 1.25}
+indoor: {}
+hard: {}
