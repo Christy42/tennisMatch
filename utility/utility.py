@@ -9,7 +9,6 @@ def divide_diff_by_int(dictionary, number):
     for first_tier in dictionary:
         for element in dictionary[first_tier]:
             dictionary[first_tier][element] /= float(number)
-
     return dictionary
 
 
@@ -33,3 +32,7 @@ def arg_max(the_list):
     for i in range(len(the_list)):
         if the_list[i] == largest:
             return i
+
+
+def shift_bit_length(x):
+    return 1 << (x-1).bit_length()
