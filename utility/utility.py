@@ -1,4 +1,5 @@
 import random
+import math
 
 
 def diff(elements):
@@ -36,5 +37,30 @@ def arg_max(the_list):
             return i
 
 
+def arg_min(the_list):
+    if type(the_list) == list:
+        the_list = {i: the_list[i] for i in range(len(the_list))}
+    smallest = min(the_list.values())
+    for i in the_list:
+        if the_list[i] == smallest:
+            return i
+
+
 def shift_bit_length(x):
     return 1 << (x-1).bit_length()
+
+
+def calc_time_diff(new_week, new_year, old_week, old_year):
+    new_time = new_year * 52 + new_week
+    old_time = old_year * 52 + old_week
+    difference = new_time - old_time
+    return difference
+
+
+def max_x_from_dict(dictionary, x):
+    big_dict = {}
+    for element in dictionary:
+        big_dict.update({element: dictionary[element][key]})
+        if len(big_dict) > x:
+            del big_dict[arg_min(big_dict)]
+    return big_dict

@@ -72,10 +72,11 @@ def create_schedule(numbers, seeded_players, year, competition_name, start_day=1
     days = [(start_day + x * 2) % 7 for x in range(int(log(numbers, 2)))]
     if days[len(days) - 1] == 6 or days[len(days) - 1] == 1:
         days[len(days) - 1] = 0
-    with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "w") \
+    with open(os.environ["TENNIS_HOME"] + "//competitions//" + year + "//" + competition_name + ".yaml", "w") \
             as file:
-        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign ups": [], "rounds played": 0,
-                        "qualification rounds": qualification_rounds}, file)
+        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign ups": {}, "rounds played": 0,
+                        "qualification rounds": qualification_rounds, "competition_name": competition_name,
+                        "year": year[5:]}, file)
 
 
 def run_next_round(year, competition_name):
