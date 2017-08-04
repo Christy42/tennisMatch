@@ -2,6 +2,7 @@ import os
 import yaml
 from competitions import run_competition
 
+
 def find_competitions_for_week():
     pass
 
@@ -21,7 +22,6 @@ def start_competition(competition_name, year):
             config:
         comp_details = yaml.safe_load(config)
     get_ranks = find_rankings(comp_details["sign ups"])
-
 
 
 
