@@ -24,7 +24,6 @@ def start_competition(competition_name, year):
     get_ranks = find_rankings(comp_details["sign ups"])
 
 
-
 def sign_up_for_competition(player_id, player_name, competition_name, year):
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + year + "//" + competition_name + ".yaml", "r") as \
             competition_file:
