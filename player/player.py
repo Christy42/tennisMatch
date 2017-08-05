@@ -1,6 +1,7 @@
 import yaml
+import os
 
-from utility.utility import repeated_random
+from utility.utility import repeated_random, calc_time_diff
 
 
 class Player:
@@ -20,7 +21,9 @@ class Player:
                      "orders": {"default": {"first serve aggression": 3, "second serve aggression": 2,
                                             "aggression": 3, "strategy": "All Court"}},
                      "rankings": {},
+                     # How to do rankings
                      "stats": {}}
+        self._id = 1
         self._stats = stats
 
     def create_file(self):
@@ -41,13 +44,32 @@ class Player:
         pass
 
     def set_stats(self):
-        pass
+        with open(os.environ["TENNIS_HOME"] + "//players//stats//baseStats.yaml", "w") as base_file:
+            stats = yaml.safe_load(base_file)
+        with open(os.environ["TENNIS_HOME"] + "//players//stats//Player_" + str(self._id) + ".yaml", "w") as stat_file:
+            yaml.safe_dump(stats, stat_file)
 
     def train(self, training):
         pass
 
     def apply_height(self):
         pass
+
+    def calc_ranking_points(self, current_week, current_year):
+        with open(os.environ["TENNIS_HOME"] + "//players//stats//Player_" + str(self._id) + ".yaml", "r") as stat_file:
+            competitions = yaml.safe_load(stat_file)
+        mandatory = competitions["events mandatory"]
+        competitions = competitions["competition results"]
+
+        junior_events = {competition: competitions[competition]["ranking points"]
+                         for competition in competitions if competitions[competition]["style"] in
+                         ["Junior", "Junior Doubles"] and competitions[competition]["year"] < 104}
+        single_events = {competition: competitions[competition]["ranking points"]
+                         for competition in competitions if competitions[competition]["style"] == "Single" and
+                         competitions[competition]["year"] < 104}
+        double_events = {competition: competitions[competition]["ranking points"]
+                         for competition in competitions if competitions[competition]["style"] == "Double" and
+                         competitions[competition]["year"] < 104}
 
     def get_game_stats(self):
         self.apply_court()
