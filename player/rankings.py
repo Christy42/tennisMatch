@@ -2,25 +2,44 @@ import yaml
 import os
 import datetime
 import random
+import pandas
 
 
 # tie breaks, 1000 + events score, highest score, second highest score etc, random 1, random 2
 # I need format to be competitions = {date: {event level: level, ranking points: score, event name: name, court: court}}
-def update_rankings():
-    rankings = {}
-    for file in os.listdir("players//players"):
-        with open("players//players//" + file, "r") as player_file:
-            player = yaml.safe_load(player_file)
-            tournaments = player["rankings"]
-            name = player["name"]
-            id = player["id"]
-        rankings.update({file[7:]: {"ranking points": sum(list(tournaments.values())), "name": name}})
-    with open("players//rankings.yaml", "w") as ranking_file:
-        yaml.safe_dump(rankings, ranking_file)
+def update_rankings(rankings):
+    ans = pandas.DataFrame(rankings["senior rankings"])
+    ans = ans.T
+    sort_by = ['ranking', 'ATP Score', 'Levels']
+    level = 1
+    while "Level " + str(level) in ans.columns:
+        sort_by.append("Level " + str(level))
+        level += 1
+    sort_by.append("random 1")
+    sort_by.append("random 2")
+    ascending = [False] * len(sort_by)
+    ascending[2] = True
+    ans = ans.sort_values(by=sort_by, ascending=ascending)
+    print(ans)
+    del ans["ATP Score"]
+    level = 1
+    while "Level " + str(level) in ans.columns:
+        del ans["Level " + str(level)]
+        level += 1
+    del ans["Levels"]
+    del ans["random 1"]
+    del ans["random 2"]
+    print(len(ans))
+    ans = ans.assign(index=range(1, len(ans) + 1))
+    ans = ans.set_index("index")
+    print(ans)
+    ans.to_csv(os.environ["TENNIS_HOME"] + "//players//ranking.yaml")
 
 
 def update_player_rankings(last_year):
-    # format it as ranking points = {senior: {point: , tie breakers: {1000: 1:,...., random_one, random_two}}}
+    senior_rankings = {}
+    doubles_rankings = {}
+    junior_rankings = {}
     with open(os.environ["TENNIS_HOME"] + "//competitions//competition_config//mandatoryCompetitions.yaml", "r") as fi:
         mandatory_competitions = yaml.safe_load(fi)
     for file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
@@ -75,13 +94,21 @@ def update_player_rankings(last_year):
                   if competitions[competition_name]["name"] == "World Tour Finals"}
         if finals != {}:
             senior["points"] += finals["World Tour Finals"]["score"]
-        print(senior)
-        print(doubles)
-        print(junior)
-        print(wimbledon)
-        # TODO: Add on tour finals to tie break???
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + file, "w") as player_file:
             yaml.safe_dump(player, player_file)
+        senior_construction = {"name": player["name"], "ranking": senior["points"]}
+        tie_break_construction = {"Level " + str(level): senior["tie breakers"][level]["score"]
+                                  for level in range(1, 18) if level in senior["tie breakers"].keys()}
+        tie_break_construction.update({"ATP Score": senior["tie breakers"]["ATP Score"],
+                                       "random 1": senior["tie breakers"]["random 1"],
+                                       "random 2": senior["tie breakers"]["random 2"], "id": player["id"]})
+        senior_construction.update(tie_break_construction)
+        senior_rankings.update({player["id"]: senior_construction})
+        senior_rankings[player["id"]]["Levels"] = len(senior_rankings[player["id"]]) - 5
+        junior_rankings.update({player["id"]: {"name": player["name"], "ranking": junior}})
+        doubles_rankings.update({player["id"]: {"name": player["name"], "ranking": doubles}})
+    return {"senior rankings": senior_rankings, "junior rankings": junior_rankings,
+            "doubles rankings": doubles_rankings}
 
 
 def get_ranking_points(style, number, tie_break_level, competitions, last_year):
@@ -110,4 +137,4 @@ def get_ranking_points(style, number, tie_break_level, competitions, last_year):
     tie_breakers.update({"random 1": random.random(), "random 2": random.random(), "ATP Score": main_tie_break})
     result = {"points": ranking_points, "tie breakers": tie_breakers}
     return result
-update_player_rankings(datetime.date(2000, 7, 15))
+update_rankings(update_player_rankings(datetime.date(2000, 7, 15)))
