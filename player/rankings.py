@@ -27,7 +27,9 @@ def update_player_rankings(last_year):
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + file, "r") as player_file:
             player = yaml.safe_load(player_file)
         mandatory = player["mandatory"]
-        competitions = player["tournaments"]
+        competitions_all = player["tournaments"]
+        competitions = {competition: competitions_all[competition] for competition in competitions_all
+                        if competitions_all[competition]["name"] != "World Tour Finals"}
         junior = get_ranking_points("junior", 6, 1000, competitions, last_year)
         junior_doubles = get_ranking_points("junior doubles", 6, 1000, competitions, last_year)
         doubles = get_ranking_points("junior doubles", 14, 1000, competitions, last_year)
@@ -36,11 +38,12 @@ def update_player_rankings(last_year):
                       "tie breakers": junior["tie breakers"]}
         if not mandatory:
             senior = get_ranking_points("singles", 18, 1000, competitions, last_year)
+            senior_tie_breaks = get_ranking_points("singles", 18, 1000, competitions_all, last_year)
+            senior = {"points": senior["points"], "tie breakers": senior_tie_breaks["tie breakers"]}
         else:
             other_comps = {week: competitions[week] for week in competitions
                            if competitions[week]["name"] not in mandatory_competitions}
             other_comps = get_ranking_points("singles", 4, 0, other_comps, last_year)["tie breakers"]
-
             del other_comps["random 1"]
             del other_comps["random 2"]
             del other_comps["ATP Score"]
@@ -48,6 +51,17 @@ def update_player_rankings(last_year):
             main_comps = {week: competitions[week] for week in competitions
                           if competitions[week]["name"] in mandatory_competitions + list_comps}
             senior = get_ranking_points("singles", 18, 1000, main_comps, last_year)
+            other_comps = {week: competitions_all[week] for week in competitions_all
+                           if competitions_all[week]["name"] not in mandatory_competitions}
+            other_comps = get_ranking_points("singles", 4, 0, other_comps, last_year)["tie breakers"]
+            del other_comps["random 1"]
+            del other_comps["random 2"]
+            del other_comps["ATP Score"]
+            list_comps = [other_comps[tier]["name"] for tier in other_comps]
+            main_comps = {week: competitions_all[week] for week in competitions
+                          if competitions[week]["name"] in mandatory_competitions + list_comps}
+            senior_tie_breaks = get_ranking_points("singles", 18, 1000, main_comps, last_year)
+            senior = {"points": senior["points"], "tie breakers": senior_tie_breaks["tie breakers"]}
         competitions = {date_comp: competitions[date_comp] for date_comp in competitions
                         if competitions[date_comp]["court"] == "grass"}
         wimbledon_two_year = get_ranking_points("singles", 9999, 1000, competitions,
@@ -57,16 +71,20 @@ def update_player_rankings(last_year):
         wimbledon = {"points": senior["points"] + 0.75 * wimbledon_two_year["points"] +
                      0.25 * wimbledon_one_year["points"], "tie breakers": wimbledon_two_year["tie breakers"]}
         player["ranking_points"] = {"senior": senior, "doubles": doubles, "junior": junior, "wimbledon": wimbledon}
+        finals = {competition_name: competitions[competition_name] for competition_name in competitions
+                  if competitions[competition_name]["name"] == "World Tour Finals"}
+        if finals != {}:
+            senior["points"] += finals["World Tour Finals"]["score"]
         print(senior)
         print(doubles)
         print(junior)
         print(wimbledon)
-        # TODO: Add on tour finals as an extra, ensure it is not part of it
+        # TODO: Add on tour finals to tie break???
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + file, "w") as player_file:
             yaml.safe_dump(player, player_file)
 
 
-def get_ranking_points(style, number, tie_break_level, competitions, last_year, mandatory=None):
+def get_ranking_points(style, number, tie_break_level, competitions, last_year):
     main_tie_break = 0
     tie_breakers = {i: {"level": 0, "score": 0, "name": "default"} for i in range(1, number + 1)}
     if competitions is None:
