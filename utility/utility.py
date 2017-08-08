@@ -64,3 +64,22 @@ def max_x_from_dict(dictionary, x):
         if len(big_dict) > x:
             del big_dict[arg_min(big_dict)]
     return big_dict
+
+
+def smallest_missing_in_list(list_of_numbers):
+    if not list_of_numbers:
+        return 0
+    lowest_fail = len(list_of_numbers)
+    partial = list_of_numbers
+    highest_pass = -1
+    half = int(len(list_of_numbers) / 2)
+    while lowest_fail - highest_pass > 1 and partial:
+        if list_of_numbers[half] == half:
+            partial = partial[half:]
+            highest_pass = half
+            half += max(int(len(partial) / 2), 1)
+        else:
+            partial = partial[:half]
+            lowest_fail = half
+            half -= max(int(len(partial) / 2), 1)
+    return lowest_fail

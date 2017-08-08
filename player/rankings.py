@@ -88,7 +88,7 @@ def update_player_rankings(last_year):
                                                 last_year)
         wimbledon = {"points": senior["points"] + 0.75 * wimbledon_two_year["points"] +
                      0.25 * wimbledon_one_year["points"], "tie breakers": wimbledon_two_year["tie breakers"]}
-        player["ranking_points"] = {"senior": senior, "doubles": doubles, "junior": junior, "wimbledon": wimbledon}
+        player["ranking points"] = {"senior": senior, "doubles": doubles, "junior": junior, "wimbledon": wimbledon}
         finals = {competition_name: competitions[competition_name] for competition_name in competitions
                   if competitions[competition_name]["name"] == "World Tour Finals"}
         if finals != {}:
@@ -146,8 +146,3 @@ def get_ranking_points(style, number, tie_break_level, competitions, last_year):
     tie_breakers.update({"random 1": random.random(), "random 2": random.random(), "ATP Score": main_tie_break})
     result = {"points": ranking_points, "tie breakers": tie_breakers}
     return result
-rankings = update_player_rankings(datetime.date(2000, 7, 15))
-update_rankings(rankings, "senior rankings")
-update_rankings(rankings, "wimbledon rankings")
-update_rankings(rankings, "junior rankings")
-update_rankings(rankings, "doubles rankings")
