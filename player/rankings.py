@@ -7,8 +7,8 @@ import pandas
 
 # tie breaks, 1000 + events score, highest score, second highest score etc, random 1, random 2
 # I need format to be competitions = {date: {event level: level, ranking points: score, event name: name, court: court}}
-def update_rankings(rankings):
-    ans = pandas.DataFrame(rankings["senior rankings"])
+def update_rankings(rankings, style):
+    ans = pandas.DataFrame(rankings[style])
     ans = ans.T
     sort_by = ['ranking', 'ATP Score', 'Levels']
     level = 1
@@ -29,17 +29,16 @@ def update_rankings(rankings):
     del ans["Levels"]
     del ans["random 1"]
     del ans["random 2"]
-    print(len(ans))
     ans = ans.assign(index=range(1, len(ans) + 1))
     ans = ans.set_index("index")
-    print(ans)
-    ans.to_csv(os.environ["TENNIS_HOME"] + "//players//ranking.yaml")
+    ans.to_csv(os.environ["TENNIS_HOME"] + "//players//" + style + ".yaml")
 
 
 def update_player_rankings(last_year):
     senior_rankings = {}
     doubles_rankings = {}
     junior_rankings = {}
+    wimbledon_rankings = {}
     with open(os.environ["TENNIS_HOME"] + "//competitions//competition_config//mandatoryCompetitions.yaml", "r") as fi:
         mandatory_competitions = yaml.safe_load(fi)
     for file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
@@ -96,19 +95,29 @@ def update_player_rankings(last_year):
             senior["points"] += finals["World Tour Finals"]["score"]
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + file, "w") as player_file:
             yaml.safe_dump(player, player_file)
-        senior_construction = {"name": player["name"], "ranking": senior["points"]}
-        tie_break_construction = {"Level " + str(level): senior["tie breakers"][level]["score"]
-                                  for level in range(1, 18) if level in senior["tie breakers"].keys()}
-        tie_break_construction.update({"ATP Score": senior["tie breakers"]["ATP Score"],
-                                       "random 1": senior["tie breakers"]["random 1"],
-                                       "random 2": senior["tie breakers"]["random 2"], "id": player["id"]})
-        senior_construction.update(tie_break_construction)
-        senior_rankings.update({player["id"]: senior_construction})
+
+        senior_rankings.update({player["id"]: rankings_construction(senior, player)})
+        wimbledon_rankings.update({player["id"]: rankings_construction(wimbledon, player)})
+        junior_rankings.update({player["id"]: rankings_construction(junior, player)})
+        doubles_rankings.update({player["id"]: rankings_construction(doubles, player)})
         senior_rankings[player["id"]]["Levels"] = len(senior_rankings[player["id"]]) - 5
-        junior_rankings.update({player["id"]: {"name": player["name"], "ranking": junior}})
-        doubles_rankings.update({player["id"]: {"name": player["name"], "ranking": doubles}})
+        wimbledon_rankings[player["id"]]["Levels"] = len(wimbledon_rankings[player["id"]]) - 5
+        junior_rankings[player["id"]]["Levels"] = len(junior_rankings[player["id"]]) - 5
+        doubles_rankings[player["id"]]["Levels"] = len(doubles_rankings[player["id"]]) - 5
+
     return {"senior rankings": senior_rankings, "junior rankings": junior_rankings,
-            "doubles rankings": doubles_rankings}
+            "doubles rankings": doubles_rankings, "wimbledon rankings": wimbledon_rankings}
+
+
+def rankings_construction(rankings, player):
+    senior_construction = {"name": player["name"], "ranking": rankings["points"]}
+    tie_break_construction = {"Level " + str(level): rankings["tie breakers"][level]["score"]
+                              for level in range(1, 18) if level in rankings["tie breakers"].keys()}
+    tie_break_construction.update({"ATP Score": rankings["tie breakers"]["ATP Score"],
+                                   "random 1": rankings["tie breakers"]["random 1"],
+                                   "random 2": rankings["tie breakers"]["random 2"], "id": player["id"]})
+    senior_construction.update(tie_break_construction)
+    return senior_construction
 
 
 def get_ranking_points(style, number, tie_break_level, competitions, last_year):
@@ -137,4 +146,8 @@ def get_ranking_points(style, number, tie_break_level, competitions, last_year):
     tie_breakers.update({"random 1": random.random(), "random 2": random.random(), "ATP Score": main_tie_break})
     result = {"points": ranking_points, "tie breakers": tie_breakers}
     return result
-update_rankings(update_player_rankings(datetime.date(2000, 7, 15)))
+rankings = update_player_rankings(datetime.date(2000, 7, 15))
+update_rankings(rankings, "senior rankings")
+update_rankings(rankings, "wimbledon rankings")
+update_rankings(rankings, "junior rankings")
+update_rankings(rankings, "doubles rankings")
