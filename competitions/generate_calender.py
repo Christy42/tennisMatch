@@ -63,7 +63,10 @@ def generate_calender(first_jan, year):
     calender = generate_pro_tour(first_jan, tour)
     calender = generate_senior_competitions(calender, season_change)
     calender = generate_junior_tour(calender)
+    for element in calender:
+        for i in range(len(calender[element])):
+            calender[element][i] += "((" + str(i) + "-" + str(element) + "))"
     with open(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//calender.yaml", "w") as cal_file:
         yaml.safe_dump(calender, cal_file)
 
-generate_calender("Tuesday", 0)
+generate_calender("Tuesday", 2000)

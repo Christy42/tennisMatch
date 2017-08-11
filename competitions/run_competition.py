@@ -2,22 +2,10 @@ from random import randint
 from math import log
 import os
 import yaml
+import datetime
 
-from utility.utility import shift_bit_length, arg_max
 
-
-def set_seeds(sign_ups):
-    rank = {}
-    for player in sign_ups:
-        with open(os.environ["TENNIS_HOME"] + "//player//players//Player_" + player + ".yaml", "r") as file:
-            rank = yaml.safe_load(file)["ranking"]
-            rank.update({rank, player})
-    seedings = {}
-    for i in range(len(sign_ups)):
-        next_seed = arg_max(rank)
-        seedings.update({i: next_seed})
-        del rank[next_seed]
-    return seedings
+from utility.utility import shift_bit_length
 
 
 def create_groups(numbers, seeded_players):
@@ -61,6 +49,34 @@ def create_groups(numbers, seeded_players):
     return sorting
 
 
+def create_competition_files():
+    with open(os.environ["TENNIS_HOME"] + "//currentDate.yaml", "r") as date_file:
+        date = datetime.datetime.strptime(yaml.safe_load(date_file), "%d/%m/%Y")
+    with open(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date.year) + "//calender.yaml", "r") as cal:
+        calender = yaml.safe_load(cal)
+    calender = {week: calender[week] for week in calender
+                if date <= datetime.datetime.strptime(week, "%Y-%m-%d") <= date + datetime.timedelta(days=35)}
+    for week in calender:
+        for element in calender[week]:
+            if os.path.isfile(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date.year) + "//" + element +
+                              ".yaml"):
+                calender[week].remove(element)
+            else:
+                create_competition_file(element, week, str(date.year))
+    print(calender)
+
+
+def create_competition_file(competition, week, year):
+    competition_file = os.environ["TENNIS_HOME"] + "//competitions//competition_config//" + \
+                       competition.split("((")[0] + "_Config.yaml"
+    with open(competition_file, "r") as comp_file:
+        competition_stats = yaml.safe_load(comp_file)
+    competition_stats["sign ups"] = []
+    # with open(os.environ["TENNIS_HOME"] + "//competitions//year " + year + "//" + competition + ".yaml", "w") as file:
+    #     yaml.safe_dump(competition_stats, file)
+    print(competition_file)
+
+
 def create_schedule(numbers, seeded_players, year, competition_name, start_day=1, qualification_rounds=999):
     sorting = create_groups(numbers, seeded_players)
     final = []
@@ -74,7 +90,7 @@ def create_schedule(numbers, seeded_players, year, competition_name, start_day=1
         days[len(days) - 1] = 0
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + year + "//" + competition_name + ".yaml", "w") \
             as file:
-        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign ups": {}, "rounds played": 0,
+        yaml.safe_dump({"round 1": final, "days": days, "seeded": seeded_players, "sign ups": [], "rounds played": 0,
                         "qualification rounds": qualification_rounds, "competition_name": competition_name,
                         "year": year[5:]}, file)
 
@@ -84,6 +100,7 @@ def run_next_round(year, competition_name):
        as file:
         competition = yaml.safe_load(file)
     if "round 2" not in competition.keys():
+        # TODO: Need to remember what this was doing and get it doing it  better.
         competition["seeds"] = set_seeds(competition["sign ups"])
 
     players_left = competition["round " + str(competition["rounds played"] + 1)]
@@ -105,5 +122,39 @@ def run_next_round(year, competition_name):
         print("")
         print(players_left)
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "w") \
-     as file:
+      as file:
         yaml.safe_dump(competition, file)
+
+
+def get_rankings(number_required, sign_ups, ranking_style):
+    with open(os.environ["TENNIS_HOME"] + "//players//" + ranking_style + ".yaml", "r") as ranking_file:
+        rank = yaml.safe_load(ranking_file)
+    sign_up_ranking = {i: rank[i]["id"] for i in rank if rank[i]["id"] in sign_ups}
+    while len(sign_ups) > number_required:
+        del sign_up_ranking[max(sign_up_ranking)]
+    return sign_up_ranking
+
+
+def create_competition_config_file(name, numbers, seeded, qualifying_rounds, ranking_points, surface, file_name,
+                                   ranking_restrictions, age_restrictions, ranking_method, qualifying_seeds,
+                                   qualifying_number):
+    config = {"name": name, "numbers": numbers, "seeded": seeded, "qualifying rounds": qualifying_rounds,
+              "ranking points": ranking_points, "surface": surface, "ranking method": ranking_method,
+              "ranking restrictions": ranking_restrictions, "age restrictions": age_restrictions,
+              "qualifying seeds": qualifying_seeds, "qualifying number": qualifying_number}
+    with open(os.environ["TENNIS_HOME"] + "//competitions//competition_config//" + file_name + "_Config.yaml", "w") \
+            as config_file:
+        yaml.safe_dump(config, config_file)
+
+create_competition_config_file(name="CH1+h", ranking_method="senior", surface="clay", file_name="CH1+h(clay)",
+                               ranking_restrictions={"rank": ["greater than", 50]}, age_restrictions={},
+                               qualifying_rounds=2, numbers=32, seeded=8,
+                               ranking_points={"W": 80, "F": 48, "SF": 29, "QF": 15, "R2": 6, "R1": 0,
+                                               "Q": 3, "Q2": 0, "Q1": 0},
+                               qualifying_seeds=8, qualifying_number=4)
+#                       125	75	45	25	10	5
+# Challenger 125,000	110	65	40	20	9	5
+# Challenger 100,000	100	60	35	18	8	5
+# Challenger 75,000	     90	55	33	17	8	5
+# Challenger 50,000	     80	48	29	15	7	3
+# Challenger 35,000 +H	 80	48	29	15	6	3
