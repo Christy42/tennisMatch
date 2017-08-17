@@ -28,11 +28,11 @@ def generate_senior_competitions(calender, seasons):
         number_of_comps = random.randint(2, 5) if cur_date < datetime.date(2000, 11, 20) else 0
         for i in range(max(number_of_comps, number_of_comps_futures)):
             if i < number_of_comps:
-                level = random.randint(1, 9)
+                level_num = random.randint(1, 9)
                 court = ["clay", "grass", "hard", "indoor"][random.randint(0, 3)]
                 court = ["clay", "grass", "hard", "indoor"][random.randint(0, 3)] if court != season else court
-                hospitality = "+h" if level % 2 == 1 else ""
-                level = str(int((level + 1) / 2.0)) + hospitality
+                hospitality = "+h" if level_num % 2 == 1 else ""
+                level = str(int((level_num + 2) / 2.0)) + hospitality
                 calender[str(cur_date)].append("CH" + str(level) + " (" + court + ")")
             if i < number_of_comps_futures:
                 level_future = random.randint(1, 3)
@@ -69,4 +69,5 @@ def generate_calender(first_jan, year):
     with open(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//calender.yaml", "w") as cal_file:
         yaml.safe_dump(calender, cal_file)
 
-generate_calender("Tuesday", 2000)
+
+# generate_calender("Tuesday", 2000)
