@@ -209,9 +209,6 @@ def server_ai(year):
     senior = {}
     junior_rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//junior.yaml")
     senior_rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//senior.yaml")
-    print(senior_rankings)
-    print(senior_rankings["id"])
-    print(senior_rankings["id"][862])
     top_fifty = [senior_rankings["id"][rank] for rank in senior_rankings["id"] if senior_rankings["index"][rank] > 50]
     top_one_fifty = [junior_rankings["id"][rank] for rank in senior_rankings["id"]
                      if senior_rankings["index"][rank] > 150]
@@ -221,24 +218,25 @@ def server_ai(year):
         print(count)
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file) as file:
             player = yaml.safe_load(file)
-        if player["bot"]:
+        if True: # player["bot"]:
             if player["junior"]:
-                junior.update({player.id: player.name})
+                junior.update({player["id"]: player["name"]})
             else:
-                senior.update({player.id: player.name})
+                senior.update({player["id"]: player["name"]})
     # TODO: Limit these to relevant ranking places, eventually can stick in a mandatory one as well
     print("BREAK")
+    print(len(junior))
     # TODO: Can be tidied up a bit
     count = 0
     senior_above_fifty = {element: senior[element] for element in senior if element in top_fifty}
     senior_above_one_fifty = {element: senior[element] for element in senior if element in top_one_fifty}
     for directory in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year)):
         if os.path.isdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory):
-            for file in os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory:
+            for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory):
                 count += 1
-                print(count)
+                # print(count)
                 with open(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory + "//" +
-                          file) as competition_file:
+                          file, "r") as competition_file:
                     comp = yaml.safe_load(competition_file)
                 if directory == "junior":
                     comp["sign ups"].update(junior)
@@ -250,7 +248,10 @@ def server_ai(year):
                             comp["sign ups"].update(senior_above_one_fifty)
                     else:
                         comp["sign ups"].update(senior)
+                with open(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory + "//" +
+                          file, "w") as competition_file:
+                    yaml.safe_dump(comp, competition_file)
 # for player_file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
 #     print(player_file)
 #     Player(os.environ["TENNIS_HOME"] + "//players//players//" + player_file).server_ai("2000")
-server_ai(2000)
+# server_ai(2000)

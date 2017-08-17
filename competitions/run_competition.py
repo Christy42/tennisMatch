@@ -3,6 +3,7 @@ from math import log
 import os
 import yaml
 import datetime
+import pandas
 
 
 from utility.utility import shift_bit_length
@@ -173,6 +174,48 @@ def create_competition_config_file(name, numbers, seeded, qualifying_rounds, ran
             as config_file:
         yaml.safe_dump(config, config_file)
 
+
+def create_match_files():
+    pass
+
+
+def sort_out_seeding(date):
+    # date format is a string YYYY-MM-DD
+    # TODO: Need to sort out ordering of competitions first
+    junior_rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//junior.yaml")
+    senior_rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//senior.yaml")
+    senior_ranks = {senior_rankings["id"][rank]: senior_rankings["index"][rank] for rank in senior_rankings["id"]}
+    junior_ranks = {junior_rankings["id"][rank]: junior_rankings["index"][rank] for rank in junior_rankings["id"]}
+    for directory in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4]):
+        if os.path.isdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory):
+            for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory):
+                with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" +
+                          file, "r") as comp_file:
+                    competition = yaml.safe_load(comp_file)
+                if "qualification" in file:
+                    number = 2 ** competition["qualifying rounds"] * competition["qualifying number"]
+                else:
+                    number = competition["number"] - competition["qualifying number"]
+                cut_players(junior_ranks if directory == "junior" else senior_ranks, competition["sign ups"], number)
+                input("G")
+
+
+def cut_players(ranks, sign_ups, number):
+    # Take sign ups and make them into panda frame with ranks
+    section = {}
+    count = 0
+    for element in sign_ups:
+        section[count] = [sign_ups[element], ranks[element]]
+        count += 1
+    data_frame = pandas.DataFrame(section)
+    data_frame = data_frame.T
+
+    data_frame.columns = ["id", "rank"]
+    data_frame = data_frame.sort_values(by="rank", ascending=True)
+    data_frame = data_frame[:number]
+    print(data_frame)
+    pass
+sort_out_seeding("2000")
 
 # create_competition_config_file(name="Qatar Open", numbers=128, seeded=8, qualifying_rounds=2,
 #                                ranking_points={"F": 1200, "Q": 25, "Q1": 0, "Q2": 8, "Q3": 16, "QF": 360, "R1": 10,
