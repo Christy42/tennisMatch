@@ -82,9 +82,11 @@ def create_competition_file(competition, start_date):
         schedule_qualification = create_schedule(qualifying_number, competition_stats["qualifying seeds"], start_date,
                                                  weekend_qualification, competition_stats["qualifying rounds"])
         schedule_qualification.update(competition_stats)
+        schedule_qualification["sets"] = 3
+        schedule_qualification["tie breaks"] = [True, True, True]
         with open(os.environ["TENNIS_HOME"] + "//competitions//year " + start_date[:4] + "//" + folder + "//" +
-                  schedule_qualification["days"][0] + " " + competition.split("((")[0] + "-qualification.yaml",
-                  "w") as file:
+                  schedule_qualification["days"][0] + " " + competition.split("((")[0] + "-qualification" +
+                  competition.split("((")[1][:2].replace("-", "") + ".yaml", "w") as file:
             yaml.safe_dump(schedule_qualification, file)
     # TODO: Create actual competition
     schedule = create_schedule(competition_stats["numbers"], competition_stats["seeded"], start_date)
@@ -97,7 +99,8 @@ def create_competition_file(competition, start_date):
     # TODO:  Do sign ups (not here obviously)
     schedule.update(competition_stats)
     with open(os.environ["TENNIS_HOME"] + "//competitions//year " + start_date[:4] + "//" + folder + "//" +
-              schedule["days"][0] + " " + competition.split("((")[0] + ".yaml", "w") as file:
+              schedule["days"][0] + " " + competition.split("((")[0] + " " +
+              competition.split("((")[1][:2].replace("-", "") + ".yaml", "w") as file:
         yaml.safe_dump(schedule, file)
 
 
@@ -130,28 +133,6 @@ def run_next_round(year, competition_name):
     with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "r") \
        as file:
         competition = yaml.safe_load(file)
-    if "round 2" not in competition.keys():
-        # TODO: Need to remember what this was doing and get it doing it  better.
-        competition["seeds"] = set_seeds(competition["sign ups"])
-
-    players_left = competition["round " + str(competition["rounds played"] + 1)]
-
-    if competition["rounds played"] + 1 < competition["qualification rounds"]:
-        # TODO: Stick in a way to grab relevant players here, need to have the players first
-        # Need: a way to label the relevant seeds as byes
-        competition["rounds played"] += 1
-        next_round = []
-        for i in range(int(len(players_left) / 2)):
-            score_one = randint(0, 100) + players_left[2 * i] + 200 * (players_left[2 * i] > numbers)
-            score_two = randint(0, 100) + players_left[2 * i + 1] + 200 * (players_left[2 * i + 1] > numbers)
-            if score_one < score_two:
-                next_round.append(players_left[2 * i])
-            else:
-                next_round.append(players_left[2 * i + 1])
-        competition["round " + str(competition["rounds played"] + 1)] = next_round
-    with open(os.environ["TENNIS_HOME"] + "//competitions//" + str(year) + "//" + competition_name + ".yaml", "w") \
-      as file:
-        yaml.safe_dump(competition, file)
 
 
 def get_rankings(number_required, sign_ups, ranking_style):
@@ -165,58 +146,166 @@ def get_rankings(number_required, sign_ups, ranking_style):
 
 def create_competition_config_file(name, numbers, seeded, qualifying_rounds, ranking_points, surface, file_name,
                                    ranking_restrictions, age_restrictions, ranking_method, qualifying_seeds,
-                                   qualifying_number):
+                                   qualifying_number, sets, tie_breaks):
+    if sets != len(tie_breaks):
+        return "Error"
     config = {"name": name, "numbers": numbers, "seeded": seeded, "qualifying rounds": qualifying_rounds,
               "ranking points": ranking_points, "surface": surface, "ranking method": ranking_method,
               "ranking restrictions": ranking_restrictions, "age restrictions": age_restrictions,
-              "qualifying seeds": qualifying_seeds, "qualifying number": qualifying_number}
+              "qualifying seeds": qualifying_seeds, "qualifying number": qualifying_number, "sets": sets}
     with open(os.environ["TENNIS_HOME"] + "//competitions//competition_config//" + file_name + "_Config.yaml", "w") \
             as config_file:
         yaml.safe_dump(config, config_file)
 
 
-def create_match_files():
-    pass
-
-
 def sort_out_seeding(date):
     # date format is a string YYYY-MM-DD
     # TODO: Need to sort out ordering of competitions first
-    junior_rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//junior.yaml")
-    senior_rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//senior.yaml")
-    senior_ranks = {senior_rankings["id"][rank]: senior_rankings["index"][rank] for rank in senior_rankings["id"]}
-    junior_ranks = {junior_rankings["id"][rank]: junior_rankings["index"][rank] for rank in junior_rankings["id"]}
-    for directory in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4]):
-        if os.path.isdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory):
-            for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory):
-                with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" +
-                          file, "r") as comp_file:
+    # Too big of a function?
+    styles = ["senior", "junior"]
+    pandas_dict = {i: {} for i in styles}
+    data_frame = {}
+    for style in styles:
+        for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style):
+            if date in file:
+                with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style + "//" + file,
+                          "r") as comp:
+                    competition = yaml.safe_load(comp)
+                pandas_dict[style].update({file: [competition["ranking points"]["W"]]})
+        data_frame[style] = pandas.DataFrame(pandas_dict[style])
+        data_frame[style] = data_frame[style].T
+        if len(data_frame[style]) > 0:
+            data_frame[style].columns = ["ranking points"]
+            data_frame[style] = data_frame[style].sort_values(by="ranking points", ascending=False)
+    print("Y")
+    used_list = []
+    rankings = {style: pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//" + style + ".yaml") for style in styles}
+    style_ranks = {style: {rankings[style]["id"][rank]: rankings[style]["index"][rank]
+                           for rank in rankings[style]["id"]} for style in styles}
+    for style in styles:
+        for file in data_frame[style].index:
+            for i in range(1 + ("-qualification" in file)):
+                if i == 0 and "-qualification" in file:
+                    file_signifier = file[10:].replace("-qualification", " ")
+                    for file_c in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" +
+                                             style):
+                        if file_signifier in file_c:
+                            if datetime.datetime.strptime(file_c[:10], "%Y-%m-%d") <= \
+                               datetime.datetime.strptime(file[:10], "%Y-%m-%d") + datetime.timedelta(days=7):
+                                file_temp = file_c
+                else:
+                    file_temp = file
+
+                with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style + "//" +
+                          file_temp, "r") \
+                        as comp_file:
                     competition = yaml.safe_load(comp_file)
                 if "qualification" in file:
                     number = 2 ** competition["qualifying rounds"] * competition["qualifying number"]
                 else:
                     number = competition["number"] - competition["qualifying number"]
-                cut_players(junior_ranks if directory == "junior" else senior_ranks, competition["sign ups"], number)
-                input("G")
+                competition["sign ups"] = {id_number: competition["sign ups"][id_number]
+                                           for id_number in competition["sign ups"] if id_number not in used_list}
+                print(file_temp)
+                players = cut_players(style_ranks[style], competition["sign ups"], number)
+                if type(players) != str:
+                    competition["ranks"] = {i + 1:
+                                            [str(players["id"][players.index[i]]),
+                                             str(players.index[i])]
+                                            for i in range(len(players.index))}
+                    used_list += [players.index[i] for i in range(len(players.index))]
+                    with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style + "//" +
+                              file_temp, "w") as comp_file:
+                        yaml.safe_dump(competition, comp_file)
 
 
 def cut_players(ranks, sign_ups, number):
     # Take sign ups and make them into panda frame with ranks
     section = {}
-    count = 0
     for element in sign_ups:
-        section[count] = [sign_ups[element], ranks[element]]
-        count += 1
+        section[element] = [sign_ups[element], ranks[element]]
     data_frame = pandas.DataFrame(section)
     data_frame = data_frame.T
-
+    if len(data_frame) == 0:
+        return ""
     data_frame.columns = ["id", "rank"]
     data_frame = data_frame.sort_values(by="rank", ascending=True)
     data_frame = data_frame[:number]
-    print(data_frame)
-    pass
-sort_out_seeding("2000")
+    # data_frame = data_frame.reset_index()
+    # print(data_frame)
+    return data_frame
 
+
+def create_match(player_1, player_2, year, competition_file, competition, round_number, rank_nos):
+    with open(os.environ["TENNIS_HOME"] + "//players//players//Player_" + str(player_1) + ".yaml", "r") as player_file:
+        player = yaml.safe_load(player_file)
+    name = [player["name"]]
+    with open(os.environ["TENNIS_HOME"] + "//players//players//Player_" + str(player_2) + ".yaml", "r") as player_file:
+        player = yaml.safe_load(player_file)
+    name.append(player["name"])
+    details = {"stats": {}, "player_ids": [player_1, player_2], "court": competition["surface"],
+               "sets": competition["sets"], "tie breaks": competition["tie breaks"],
+               "style": competition["ranking method"], "competition name": competition_file,
+               "commentary file": os.environ["TENNIS_HOME"] + "//matches//commentary//year " + str(year) + "//" +
+               competition_file.replace(".yaml", "") + "_commentary.yaml", "date": competition_file[:10],
+               "player names": name, "rank numbers": rank_nos}
+    if not os.path.isdir(os.environ["TENNIS_HOME"] + "//matches//year " + str(year)):
+        print("hi")
+        os.makedirs(os.environ["TENNIS_HOME"] + "//matches//year " + str(year))
+    if not os.path.isdir(os.environ["TENNIS_HOME"] + "//matches//year " + str(year) + "//" + competition_file):
+        os.makedirs(os.environ["TENNIS_HOME"] + "//matches//year " + str(year) + "//" + competition_file)
+    with open(os.environ["TENNIS_HOME"] + "//matches//year " + str(year) + "//" + competition_file + "//" + "round " +
+              str(round_number) + " " + str(player_1) + "vs" + str(player_2) + " " + details["date"] + ".yaml", "w") \
+            as match_file:
+        yaml.safe_dump(details, match_file)
+
+
+def create_bye(player_1, year, competition_file, competition, round_number, rank_nos):
+    with open(os.environ["TENNIS_HOME"] + "//players//players//Player_" + player_1 + ".yaml", "r") as player_file:
+        player = yaml.safe_load(player_file)
+    name = [player["name"], "BYE"]
+    details = {"stats": {}, "player_ids": [player_1, "BYE"], "court": competition["surface"],
+               "sets": competition["sets"], "tie breaks": competition["tie breaks"],
+               "style": competition["ranking method"], "competition name": competition_file,
+               "commentary file": os.environ["TENNIS_HOME"] + "//matches//commentary//year " + str(year) + "//" +
+               competition_file.replace(".yaml", "") + "_commentary.yaml", "date": competition_file[:10],
+               "player names": name, "rank numbers": rank_nos}
+    with open(os.environ["TENNIS_HOME"] + "//matches//year " + str(year) + "//" + competition_file + "//" +
+              "round " + str(round_number) + " " + str(player_1) + "vs" + "BYE " + details["date"] + ".yaml", "w") \
+            as match_file:
+        yaml.safe_dump(details, match_file)
+
+
+def make_match_files(competition_folder, competition_file, year, roun):
+    # TODO: Ensure that it dates later round matches correctly
+    with open(competition_folder + "//" + competition_file, "r") as file:
+        competition = yaml.safe_load(file)
+    if "ranks" not in competition:
+        return 0
+
+    for i in range(int(len(competition["round 1"]) / 2)):
+        seeds_playing = [competition["round " + str(roun)][2 * i], competition["round " + str(roun)][2 * i] + 1]
+        if competition["round " + str(roun)][2 * i] not in competition["ranks"]:
+            create_bye(competition["ranks"][competition["round " + str(roun)][2 * i + 1]][1], year, competition_file,
+                       competition, roun, seeds_playing)
+        elif competition["round " + str(roun)][2 * i + 1] not in competition["ranks"]:
+            create_bye(competition["ranks"][competition["round " + str(roun)][2 * i]][1], year, competition_file,
+                       competition, roun, seeds_playing)
+        else:
+            create_match(competition["ranks"][competition["round " + str(roun)][2 * i]][1],
+                         competition["ranks"][competition["round " + str(roun)][2 * i + 1]][1], year, competition_file,
+                         competition, roun, seeds_playing)
+
+
+def all_match_files(date, round_number):
+    for style in ["junior", "senior"]:
+        for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date[:4]) + "//" + style):
+            if date in file:
+                make_match_files(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date[:4]) + "//" + style,
+                                 file, date[:4], round_number)
+# sort_out_seeding("2000-01-06")
+all_match_files("2000-01-06", 1)
+# create_competition_files()
 # create_competition_config_file(name="Qatar Open", numbers=128, seeded=8, qualifying_rounds=2,
 #                                ranking_points={"F": 1200, "Q": 25, "Q1": 0, "Q2": 8, "Q3": 16, "QF": 360, "R1": 10,
 #                                                "R2": 45, "R3": 90, "R4": 180, "SF": 720, "W": 2000},
