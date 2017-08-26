@@ -283,8 +283,8 @@ def make_match_files(competition_folder, competition_file, year, roun):
     if "ranks" not in competition:
         return 0
 
-    for i in range(int(len(competition["round 1"]) / 2)):
-        seeds_playing = [competition["round " + str(roun)][2 * i], competition["round " + str(roun)][2 * i] + 1]
+    for i in range(int(len(competition["round " + str(roun)]) / 2)):
+        seeds_playing = [competition["round " + str(roun)][2 * i], competition["round " + str(roun)][2 * i + 1]]
         if competition["round " + str(roun)][2 * i] not in competition["ranks"]:
             create_bye(competition["ranks"][competition["round " + str(roun)][2 * i + 1]][1], year, competition_file,
                        competition, roun, seeds_playing)
