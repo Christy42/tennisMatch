@@ -177,7 +177,7 @@ class Player:
         style = "junior" if self._junior else "senior"
         rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//" + style + ".yaml")
         rank = [rankings["index"][i] for i in range(len(rankings["index"])) if rankings["id"][i] == self._id]
-        if rank == []:
+        if rank:
             rank = [9999]
         for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + style):
             sign_up_for_competition(self._id, self._name, self._junior, rank[0],
@@ -200,10 +200,6 @@ class Player:
     def name(self):
         return self._name
 
-# for i in range(1001):
-#     print(i)
-#     Player()
-
 
 def server_ai(year):
     junior = {}
@@ -213,10 +209,7 @@ def server_ai(year):
     top_fifty = [senior_rankings["id"][rank] for rank in senior_rankings["id"] if senior_rankings["index"][rank] > 50]
     top_one_fifty = [junior_rankings["id"][rank] for rank in senior_rankings["id"]
                      if senior_rankings["index"][rank] > 150]
-    count = 0
     for player_file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
-        count += 1
-        print(count)
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file) as file:
             player = yaml.safe_load(file)
         if True: # player["bot"]:
@@ -228,14 +221,11 @@ def server_ai(year):
     print("BREAK")
     print(len(junior))
     # TODO: Can be tidied up a bit
-    count = 0
     senior_above_fifty = {element: senior[element] for element in senior if element in top_fifty}
     senior_above_one_fifty = {element: senior[element] for element in senior if element in top_one_fifty}
     for directory in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year)):
         if os.path.isdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory):
             for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory):
-                count += 1
-                # print(count)
                 with open(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + directory + "//" +
                           file, "r") as competition_file:
                     comp = yaml.safe_load(competition_file)
