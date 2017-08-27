@@ -6,6 +6,8 @@ from utility.utility import diff, arg_max
 
 
 def singles_match(players, max_sets, tie_break_last_set, stats=None):
+    # TODO: Use players properly and not as dicts
+    # TODO: update their files at the end?  Or maybe just take in ids and make them here?
     if not stats:
         stats = {}
         for i in range(len(players)):
