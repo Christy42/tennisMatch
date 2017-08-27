@@ -61,6 +61,12 @@ def tie_break(players, server, stats):
 
 
 def play_game(players, server, stats):
+    """
+    :type players: list
+    :param server:
+    :param stats:
+    :return:
+    """
     score = [0, 0]
     receiver_list = [0, 1] if server in [2, 3] else [2, 3]
     receiver = 0

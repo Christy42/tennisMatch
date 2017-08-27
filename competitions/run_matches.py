@@ -14,20 +14,20 @@ def run_matches(date):
                     pass
 
 
-def run_match_competition(date, competition):
+def run_match_competition(date, competition, directory):
     player_dict = {}
     match_details = []
-    # Need competition file
-    for match in os.listdir(os.environ["TENNIS_HOME"] + "matches//year " + date[:4] + "//" + competition):
+    with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" + competition,
+              "r") as comp_file:
+        competition = yaml.safe_load(comp_file)
+    for match in os.listdir(os.environ["TENNIS_HOME"] + "//matches//year " + date[:4] + "//" + competition):
         if match[-10:] == date:
-            with open(os.environ["TENNIS_HOME"] + "matches//year " + date[:4] + "//" + competition + "//" + match) as \
+            with open(os.environ["TENNIS_HOME"] + "//matches//year " + date[:4] + "//" + competition + "//" + match) as\
               file:
                 match_details.append(yaml.safe_load(file))
                 for player in match_details[len(match_details) - 1]["player_ids"]:
                     player_dict.update({player: Player(file=os.environ["TENNIS_HOME"] + "//players//players/Player_" +
-                                              player + ".yaml")})
-    # TODO: Create players properly
-    # TODO: Or more likely fix match to simply take in players correctly
+                                        player + ".yaml").create_game_dict()})
     winner_list = []
     for match in match_details:
         match_players = [player_dict[player] for player in match_details[len(match_details) - 1]["player_ids"]]
@@ -36,5 +36,9 @@ def run_match_competition(date, competition):
                           tie_break_last_set=match_details[match]["tie breaks"][len(match_details[match]["tie breaks"])
                                                                                 - 1])["winner"]
         winner_list.append(match_details[match]["rank numbers"][winner])
-    # ok I have the winner [as say winner, now what.  Add number to the line (correct order)
+    # TODO: Need a way to check next round properly
+    # Get date and find where it is in the list of dates
+    roun = competition["days"].index(date) + 1
+    next_round = [seed for seed in competition["round " + str(roun - 1)] if seed in winner_list]
+    competition.update({"round " + str(roun): next_round})
     # put stuff back into competition file

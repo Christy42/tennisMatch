@@ -73,8 +73,6 @@ class Player:
             self._tournaments = {}
             self._mandatory = False
             self.create_file()
-        self._match_serve = self._strength
-        self._match_mobility = self._mobility
 
     def create_physical(self, optimal):
         self._fitness_basis = int(repeated_random(-176, 16, 3))
@@ -134,6 +132,14 @@ class Player:
     def apply_strategy(self):
         pass
 
+    def create_game_dict(self):
+        # TODO: Make values for different attributes if changed pre game
+        mobility, serve = self.apply_height()
+        attributes = {"stamina": self._stamina, "serve": serve, "mobility": mobility,
+                      "accuracy": self._accuracy, "strength": self._strength, "shot selection": self._shot_selection,
+                      "fitness": self._fitness}
+        return attributes
+
     def set_physical(self, optimal, basis):
         constant = basis - self._age_factor ** 2 - 2 * optimal * self._age_factor
         mult = 2 * (optimal + self._age_factor)
@@ -159,15 +165,10 @@ class Player:
     def apply_height(self):
         change_serve = 1 / float(1 + math.exp(-0.2 * (self._height - 185))) / 5 + 0.9
         change_serve = 1 - 2 * (1 - change_serve) if change_serve < 1 else change_serve
-        self._match_serve *= change_serve
+        serve = self._serve * change_serve
         change_mobility = 1 / float(1 + math.exp(-0.2 * (185 - self._height))) / 5 + 0.9
         change_mobility = 1 - 2 * (1 - change_mobility) if change_mobility < 1 else change_mobility
-        self._match_mobility *= change_mobility
-
-    def get_game_stats(self):
-        self.apply_court()
-        self.apply_strategy()
-        self.apply_height()
+        return self._mobility * change_mobility,serve
 
     def server_ai(self, year):
         # TODO: Need to speed this up
