@@ -8,8 +8,9 @@ import pandas
 # tie breaks, 1000 + events score, highest score, second highest score etc, random 1, random 2
 # I need format to be competitions = {date: {event level: level, ranking points: score, event name: name, court: court}}
 def update_rankings(rankings, style):
-    ans = pandas.DataFrame(rankings[style])
+    ans = pandas.DataFrame(rankings)
     ans = ans.T
+
     sort_by = ['ranking', 'ATP Score', 'Levels']
     level = 1
     while "Level " + str(level) in ans.columns:
@@ -20,7 +21,6 @@ def update_rankings(rankings, style):
     ascending = [False] * len(sort_by)
     ascending[2] = True
     ans = ans.sort_values(by=sort_by, ascending=ascending)
-    print(ans)
     del ans["ATP Score"]
     level = 1
     while "Level " + str(level) in ans.columns:
@@ -34,7 +34,9 @@ def update_rankings(rankings, style):
     ans.to_csv(os.environ["TENNIS_HOME"] + "//players//" + style + ".yaml")
 
 
+# TODO: Add Next Gen Race, Main Race, Doubles Race, Challenger Race
 def update_player_rankings(last_year):
+    last_year = datetime.datetime.strptime(last_year, "%Y-%m-%d")
     senior_rankings = {}
     doubles_rankings = {}
     junior_rankings = {}
@@ -88,7 +90,7 @@ def update_player_rankings(last_year):
                                                 last_year)
         wimbledon = {"points": senior["points"] + 0.75 * wimbledon_two_year["points"] +
                      0.25 * wimbledon_one_year["points"], "tie breakers": wimbledon_two_year["tie breakers"]}
-        player["ranking_points"] = {"senior": senior, "doubles": doubles, "junior": junior, "wimbledon": wimbledon}
+        player["ranking points"] = {"senior": senior, "doubles": doubles, "junior": junior, "wimbledon": wimbledon}
         finals = {competition_name: competitions[competition_name] for competition_name in competitions
                   if competitions[competition_name]["name"] == "World Tour Finals"}
         if finals != {}:
@@ -104,7 +106,10 @@ def update_player_rankings(last_year):
         wimbledon_rankings[player["id"]]["Levels"] = len(wimbledon_rankings[player["id"]]) - 5
         junior_rankings[player["id"]]["Levels"] = len(junior_rankings[player["id"]]) - 5
         doubles_rankings[player["id"]]["Levels"] = len(doubles_rankings[player["id"]]) - 5
-
+    update_rankings(senior_rankings, "senior")
+    update_rankings(junior_rankings, "junior")
+    update_rankings(doubles_rankings, "doubles")
+    update_rankings(wimbledon_rankings, "wimbledon")
     return {"senior rankings": senior_rankings, "junior rankings": junior_rankings,
             "doubles rankings": doubles_rankings, "wimbledon rankings": wimbledon_rankings}
 
@@ -146,8 +151,3 @@ def get_ranking_points(style, number, tie_break_level, competitions, last_year):
     tie_breakers.update({"random 1": random.random(), "random 2": random.random(), "ATP Score": main_tie_break})
     result = {"points": ranking_points, "tie breakers": tie_breakers}
     return result
-rankings = update_player_rankings(datetime.date(2000, 7, 15))
-update_rankings(rankings, "senior rankings")
-update_rankings(rankings, "wimbledon rankings")
-update_rankings(rankings, "junior rankings")
-update_rankings(rankings, "doubles rankings")
