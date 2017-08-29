@@ -132,12 +132,16 @@ class Player:
     def apply_strategy(self):
         pass
 
-    def create_game_dict(self):
+    def create_game_dict(self, order="default"):
         # TODO: Make values for different attributes if changed pre game
+        # TODO: Make the orders for the player as well.  Need a way to get a specific order but do default now
         mobility, serve = self.apply_height()
         attributes = {"stamina": self._stamina, "serve": serve, "mobility": mobility,
                       "accuracy": self._accuracy, "strength": self._strength, "shot selection": self._shot_selection,
-                      "fitness": self._fitness}
+                      "fitness": self._fitness, "id": self._id,
+                      "first serve aggression": self._orders[order]["first serve aggression"],
+                      "second serve aggression": self._orders[order]["second serve aggression"],
+                      "aggression": self._orders[order]["aggression"], "strategy": self._orders[order]["strategy"]}
         return attributes
 
     def set_physical(self, optimal, basis):
@@ -158,6 +162,14 @@ class Player:
             stats = yaml.safe_load(base_file)
         with open(os.environ["TENNIS_HOME"] + "//players//stats//Player_" + str(self._id) + ".yaml", "w") as stat_file:
             yaml.safe_dump(stats, stat_file)
+
+    def set_stamina(self, value):
+        self._stamina = value
+
+    def update_player_stats(self, statistics):
+        for element in statistics:
+            pass
+        pass
 
     def train(self, training):
         self.create_file(id_known=True)
@@ -218,9 +230,7 @@ def server_ai(year):
                 junior.update({player["id"]: player["name"]})
             else:
                 senior.update({player["id"]: player["name"]})
-    # TODO: Limit these to relevant ranking places, eventually can stick in a mandatory one as well
-    print("BREAK")
-    print(len(junior))
+
     # TODO: Can be tidied up a bit
     senior_above_fifty = {element: senior[element] for element in senior if element in top_fifty}
     senior_above_one_fifty = {element: senior[element] for element in senior if element in top_one_fifty}
@@ -246,4 +256,19 @@ def server_ai(year):
 # for player_file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
 #     print(player_file)
 #     Player(os.environ["TENNIS_HOME"] + "//players//players//" + player_file).server_ai("2000")
-server_ai(2000)
+# server_ai(2000)
+
+
+def create_physical(optimal):
+    maximum = 1000 - int(repeated_random(0, 150, 3)) - optimal * optimal
+    return maximum
+
+
+for player_file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
+    with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file, "r") as file:
+        player = yaml.safe_load(file)
+    player["max fitness"] = create_physical(24)
+    player["max strength"] = create_physical(24)
+    player["max mobility"] = create_physical(24)
+    with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file, "w") as file:
+        yaml.safe_dump(player, file)

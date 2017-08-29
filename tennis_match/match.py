@@ -1,5 +1,8 @@
 import random
+import os
+import yaml
 from math import floor
+from player.player import Player
 
 from tennis_match.point import play_point
 from utility.utility import diff, arg_max
@@ -13,8 +16,6 @@ def singles_match(players, max_sets, tie_break_last_set, stats=None):
         for i in range(len(players)):
             stats.update({i: {}})
     sets_won = [0, 0]
-    for i in range(len(players)):
-        players[i]["stamina"] = 1000
     server = random.randint(0, len(players) - 1)
     players = set_base_attributes(players)
     while max(sets_won) < max_sets / 2.0 + 0.5:
@@ -23,6 +24,14 @@ def singles_match(players, max_sets, tie_break_last_set, stats=None):
         server = result["server"]
         stats = result["stats"]
     stamina_return = [players[i]["stamina"] for i in range(len(players))]
+    ident = [players[i]["id"] for i in range(len(players))]
+    for i in range(len(ident)):
+        player_attributes = Player(file=os.environ["TENNIS_HOME"] + "//players//players//Player_" + str(ident[i]) +
+                                   ".yaml")
+        player_attributes.set_stamina(players[i]["stamina"])
+        player_attributes.create_file(id_known=True)
+        # player_attributes.update_player_stats()
+    # TODO: Need to redo player stats
     return {"winner": arg_max(sets_won), "stats": stats, "stamina": stamina_return}
 
 

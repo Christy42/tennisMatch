@@ -304,7 +304,7 @@ def all_match_files(date, round_number):
                 make_match_files(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date[:4]) + "//" + style,
                                  file, date[:4], round_number)
 # sort_out_seeding("2000-01-06")
-all_match_files("2000-01-06", 1)
+# all_match_files("2000-01-06", 1)
 # create_competition_files()
 # create_competition_config_file(name="Qatar Open", numbers=128, seeded=8, qualifying_rounds=2,
 #                                ranking_points={"F": 1200, "Q": 25, "Q1": 0, "Q2": 8, "Q3": 16, "QF": 360, "R1": 10,
