@@ -44,6 +44,9 @@ class Player:
             self._mobility_max = stats["max mobility"]
             self._strength_max = stats["max strength"]
             self._fitness_max = stats["max fitness"]
+            self._player_stats = {}
+            if "player stats" in stats:
+                self._player_stats = stats["player stats"]
         else:
             with open(os.environ["TENNIS_HOME"] + "//players//player_ids.yaml", "r") as file:
                 id_used = yaml.safe_load(file)
@@ -101,7 +104,7 @@ class Player:
             id_used.append(self._id)
             with open(os.environ["TENNIS_HOME"] + "//players//player_ids.yaml", "w") as file:
                 yaml.safe_dump(id_used, file)
-        stats = {"shot selection": self._shot_selection, "strength": self._strength, "stamina": 1000,
+        stats = {"shot selection": self._shot_selection, "strength": self._strength, "stamina": self._stamina,
                  "accuracy": self._accuracy, "serve": self._serve, "mobility": self._mobility, "bot": self._bot,
                  "height": self._height, "age": self._age, "fitness": self._fitness, "orders": self._orders,
                  "ranking points": self._ranking_points, "player stats": self._player_stats, "id": self._id,
@@ -138,7 +141,7 @@ class Player:
         mobility, serve = self.apply_height()
         attributes = {"stamina": self._stamina, "serve": serve, "mobility": mobility,
                       "accuracy": self._accuracy, "strength": self._strength, "shot selection": self._shot_selection,
-                      "fitness": self._fitness, "id": self._id,
+                      "fitness": self._fitness, "id": self._id, "player stats": self._player_stats,
                       "first serve aggression": self._orders[order]["first serve aggression"],
                       "second serve aggression": self._orders[order]["second serve aggression"],
                       "aggression": self._orders[order]["aggression"], "strategy": self._orders[order]["strategy"]}
@@ -164,12 +167,18 @@ class Player:
             yaml.safe_dump(stats, stat_file)
 
     def set_stamina(self, value):
-        self._stamina = value
+        self._stamina = int(round(value, 0))
 
-    def update_player_stats(self, statistics):
+    def update_player_stats(self, statistics, competition, year):
+        if str(year) not in self._player_stats:
+            self._player_stats[str(year)] = {}
+        if "total" not in self._player_stats:
+            self._player_stats["total"] = {}
         for element in statistics:
-            pass
-        pass
+            self._player_stats["total"][element] = statistics[element] + self._player_stats["total"].get(element, 0)
+            self._player_stats[str(year)][element] = statistics[element] + self._player_stats[str(year)].get(element, 0)
+            self._player_stats["total"][competition] = statistics[element]
+        self.create_file(id_known=True)
 
     def train(self, training):
         self.create_file(id_known=True)
@@ -259,16 +268,16 @@ def server_ai(year):
 # server_ai(2000)
 
 
-def create_physical(optimal):
-    maximum = 1000 - int(repeated_random(0, 150, 3)) - optimal * optimal
-    return maximum
+# def create_physical(optimal):
+#     maximum = 1000 - int(repeated_random(0, 150, 3)) - optimal * optimal
+#     return maximum
 
 
-for player_file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
-    with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file, "r") as file:
-        player = yaml.safe_load(file)
-    player["max fitness"] = create_physical(24)
-    player["max strength"] = create_physical(24)
-    player["max mobility"] = create_physical(24)
-    with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file, "w") as file:
-        yaml.safe_dump(player, file)
+# for player_file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
+#     with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file, "r") as file:
+#         player = yaml.safe_load(file)
+#     player["max fitness"] = create_physical(24)
+#     player["max strength"] = create_physical(24)
+#     player["max mobility"] = create_physical(24)
+#     with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file, "w") as file:
+#         yaml.safe_dump(player, file)

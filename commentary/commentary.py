@@ -1,11 +1,16 @@
+import yaml
+import os
+
+
 def basic_comm_line(names, sets_previous, current_set, current_game, server):
+    # TODO: Work out how to get game information into this.  Record as long list and sort into working order after
     old_sets = ""
     for element in sets_previous:
         old_sets += " {} : {}, ".format(element[0], element[1])
     current_score = " {}".format(current_game[0]) + (u"\u25cf" if server == 0 else "") + \
                     " : {}".format(current_game[1]) + (u"\u25cf:" if server == 1 else ":")
-    print("{} vs {}: ".format(names[0], names[1]) + old_sets + " {} : {} ".format(current_set[0], current_set[1]) +
-          current_score)
+    return "{} vs {}: ".format(names[0], names[1]) + old_sets + " {} : {} ".format(current_set[0], current_set[1]) + \
+           current_score
 
 
 def calc_game_score(score):
@@ -46,3 +51,13 @@ def calc_special_moment(max_sets, game_score, server, old_set_scores, current_se
         return str(abs(game_score[server] - game_score[(server + 1) % 2])) + (" break" if break_point else " game") + \
                " point"
 
+
+def sort_into_commentary_file(commentary, commentary_file):
+    commentary_string = ""
+    for line in commentary:
+        if line == "\n":
+            commentary_string += os.linesep
+        else:
+            commentary_string += line
+    with open(commentary_file, "w") as com_file:
+        yaml.safe_dump(commentary_string, com_file)
