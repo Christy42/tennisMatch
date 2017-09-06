@@ -1,8 +1,10 @@
 import random
 import math
+import yaml
 from tennis_match import serve, rally_shots
 
 from utility.utility import diff
+from commentary import commentary
 
 
 class Match:
@@ -15,6 +17,7 @@ class Match:
         self._sets = [0, 0]
         self._points = [0, 0]
         self._games = [0, 0]
+        self._sets_played = ""
         self._games_required = games_required
         self._deuce = deuce
         self._tie_breaks = tie_breaks
@@ -129,16 +132,70 @@ class Match:
             server = (server + 1) % 2 if sum(self._points) % 2 == 1 else server
         return {"winner": self._points.index(max(self._points))}
 
+    def stamina_effect(self):
+        for i in range(len(self._players)):
+            base_val = (self._players[i]["stamina"] < 500) * 0.2 + (self._players[i]["stamina"] < 300) * 0.1 + \
+                       0.1 * (self._players[i]["stamina"] == 0)
+            higher_val = base_val + 0.2 if base_val > 0 else 0
+            for attribute in ["mobility", "strength"]:
+                self._players[i][attribute] = self._players[i]["base " + attribute] * \
+                 (higher_val * self._players[i]["stamina"] / 500.0 + 1 - higher_val)
+            for attribute in ["accuracy", "serve"]:
+                self._players[i][attribute] = self._players[i]["base " + attribute] * \
+                    (base_val * self._players[i]["stamina"] / 500.0 + 1 - base_val)
 
-def stamina_effect(players):
-    for i in range(len(players)):
-        base_val = (players[i]["stamina"] < 500) * 0.2 + (players[i]["stamina"] < 300) * 0.1 + \
-                   0.1 * (players[i]["stamina"] == 0)
-        higher_val = base_val + 0.2 if base_val > 0 else 0
-        for attribute in ["mobility", "strength"]:
-            players[i][attribute] = players[i]["base " + attribute] * \
-                (higher_val * players[i]["stamina"] / 500.0 + 1 - higher_val)
-        for attribute in ["accuracy", "serve"]:
-            players[i][attribute] = players[i]["base " + attribute] * \
-                (base_val * players[i]["stamina"] / 500.0 + 1 - base_val)
-    return players
+    def print_to_comm_file(self):
+        with open(self._commentary_file, "w") as com_file:
+            yaml.safe_dump(self._commentary, com_file)
+
+    def commentary(self, tie_break, points_required=4):
+        com_score = commentary.calc_game_score(self._points)
+        com_line = self._sets_played + str(self._games[0]) + "-" + str(self._games[1]) + ", " + \
+            com_score[0] + " : " + com_score[1]
+        moment = self.calc_special_moment(tie_break, points_required=points_required)
+        total = 4
+        if moment["moment"] == "None":
+            total = 3
+        if random.randint(1, total) == 1:
+            commentary.basic_comm_line(1, 1, 1, 1, 1)
+        self._commentary.append(com_line)
+
+    def basic_comm_line(self, result, moment, server):
+        if moment["moment"] != "None":
+            pass
+        # Use basic, figure out exact moment from winner, server, rally, balance
+        basic = "winner" if result["balance"] < -40 else "unforced error" if result["balance"] > 20 else ""
+        basic += "long rally" if result["rally"] < -40 else "short rally" if result["balance"] > 20 else ""
+        # Add in double fault, aces - replace the above if used
+        # Maybe do this when we add it to the stats
+        if result["balance"] < -40:
+            basic = "winner"
+        elif result["balance"] > 20:
+            basic = "unforced error"
+        # Have a file that has different scenarios upcoming
+        line = "{}   {}".format(self._players[0]["name"], self._players[1]["name"])
+
+    def calc_special_moment(self, tie_break, points_required=4):
+        game_point = [True if self._points[player] >= points_required - 1 and
+                      (self._points[player] > self._points[(player + 1) % 2] or not self._deuce) else False
+                      for player in range(2)]
+        set_game = [True if self._games[player] >= self._games_required - 1 and
+                    (self._games[player] > self._games[(player + 1) % 2] or tie_break) else False
+                    for player in range(2)]
+        match_set = [True if self._sets[player] >= self._sets_required - 1 else False for player in range(2)]
+        match_point = [True if match_set[player] and set_game[player] and game_point[player] else False
+                       for player in range(2)]
+        set_point = [True if set_game[player] and game_point[player] else False for player in range(2)]
+        match_game = [True if set_game[player] and match_set[player] else False for player in range(2)]
+
+        set_game = [set_game[player] if self._points == [0, 0] else False for player in range(2)]
+        match_game = [match_game[player] if self._points == [0, 0] else False for player in range(2)]
+        match_set = [match_set[player] if self._games == self._points == [0, 0] else False for player in range(2)]
+
+        dict_of_moments = {"match point": match_point, "match game": match_game, "match set": match_set,
+                           "set game": set_game, "set point": set_point, "game point": game_point}
+        for moment in dict_of_moments:
+            for player in range(2):
+                if dict_of_moments[moment[player]]:
+                    return {"player": player, "moment": moment}
+        return {"player": "NA", "moment": "None"}

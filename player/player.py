@@ -44,9 +44,6 @@ class Player:
             self._mobility_max = stats["max mobility"]
             self._strength_max = stats["max strength"]
             self._fitness_max = stats["max fitness"]
-            self._player_stats = {}
-            if "player stats" in stats:
-                self._player_stats = stats["player stats"]
         else:
             with open(os.environ["TENNIS_HOME"] + "//players//player_ids.yaml", "r") as file:
                 id_used = yaml.safe_load(file)
@@ -107,8 +104,8 @@ class Player:
         stats = {"shot selection": self._shot_selection, "strength": self._strength, "stamina": self._stamina,
                  "accuracy": self._accuracy, "serve": self._serve, "mobility": self._mobility, "bot": self._bot,
                  "height": self._height, "age": self._age, "fitness": self._fitness, "orders": self._orders,
-                 "ranking points": self._ranking_points, "player stats": self._player_stats, "id": self._id,
-                 "nationality": self._nationality, "name": self._name, "strength basis": self._strength_basis,
+                 "ranking points": self._ranking_points, "id": self._id, "name": self._name,
+                 "nationality": self._nationality, "strength basis": self._strength_basis,
                  "mobility basis": self._mobility_basis, "fitness basis": self._fitness_basis,
                  "junior": self._junior, "age factor": self._age_factor, "mandatory": self._mandatory,
                  "taken": self._taken, "tournaments": self._tournaments, "max mobility": self._mobility_max,
@@ -139,7 +136,7 @@ class Player:
         # TODO: Make values for different attributes if changed pre game
         # TODO: Make the orders for the player as well.  Need a way to get a specific order but do default now
         mobility, serve = self.apply_height()
-        attributes = {"stamina": self._stamina, "serve": serve, "mobility": mobility,
+        attributes = {"stamina": self._stamina, "serve": serve, "mobility": mobility, "name": self._name,
                       "accuracy": self._accuracy, "strength": self._strength, "shot selection": self._shot_selection,
                       "fitness": self._fitness, "id": self._id, "player stats": self._player_stats,
                       "first serve aggression": self._orders[order]["first serve aggression"],
@@ -161,10 +158,15 @@ class Player:
         self.create_file(id_known=True)
 
     def set_stats(self):
-        with open(os.environ["TENNIS_HOME"] + "//players//stats//baseStats.yaml", "r") as base_file:
-            stats = yaml.safe_load(base_file)
+        # TODO: Consider using this for stats, maybe just for writing them here
+        # Need to read them in before setting them and then printing them, the base stats idea might work later on
+        if os.path.isfile(os.environ["TENNIS_HOME"] + "//players//stats//baseStats.yaml"):
+            with open(os.environ["TENNIS_HOME"] + "//players//stats//baseStats.yaml", "r") as base_file:
+                self._player_stats = yaml.safe_load(base_file)
+        else:
+            self._player_stats = {}
         with open(os.environ["TENNIS_HOME"] + "//players//stats//Player_" + str(self._id) + ".yaml", "w") as stat_file:
-            yaml.safe_dump(stats, stat_file)
+            yaml.safe_dump(self._player_stats, stat_file)
 
     def set_stamina(self, value):
         self._stamina = int(round(value, 0))
@@ -199,8 +201,7 @@ class Player:
         style = "junior" if self._junior else "senior"
         rankings = pandas.read_csv(os.environ["TENNIS_HOME"] + "//players//" + style + ".yaml")
         rank = [rankings["index"][i] for i in range(len(rankings["index"])) if rankings["id"][i] == self._id]
-        if rank:
-            rank = [9999]
+        rank = [9999] if rank == [] else rank
         for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + style):
             sign_up_for_competition(self._id, self._name, self._junior, rank[0],
                                     os.environ["TENNIS_HOME"] + "//competitions//year " + str(year) + "//" + style,
