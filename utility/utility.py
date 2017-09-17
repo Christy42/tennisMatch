@@ -83,3 +83,10 @@ def smallest_missing_in_list(list_of_numbers):
             lowest_fail = half
             half -= max(int(len(partial) / 2), 1)
     return lowest_fail
+
+
+def add_dict(dict_1, dict_2):
+    dict_new = {}
+    for element in set(list(dict_1.keys()) + list(dict_2.keys())):
+        dict_new[element] = dict_1.get(element, 0) + dict_2.get(element, 0)
+    return dict_new

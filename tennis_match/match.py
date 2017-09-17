@@ -1,3 +1,4 @@
+import os
 import random
 import math
 import yaml
@@ -8,11 +9,13 @@ from commentary import commentary
 
 
 class Match:
-    def __init__(self, max_sets, players, tie_breaks, comm_file, games_required=6, deuce=True, let=True):
+    def __init__(self, max_sets, players, tie_breaks, comm_file, games_required=6, deuce=True, let=True,
+                 championship_match=False):
         # TODO: Update statistics throughout
         # TODO: Create an effect from stamina after every game
         # TODO: Stick list of all statistics recorded in a yaml file?
         self._max_sets = max_sets
+        self._championship_match = championship_match
         self._players = players
         self._sets = [0, 0]
         self._points = [0, 0]
@@ -26,21 +29,30 @@ class Match:
         self._commentary = []
         self._set_number = 0
         self._let = let
-        self._stats = {players[i]["id"]: {} for i in range(len(players))}
+        self._stats = {i: {} for i in range(len(players))}
         self._sets_required = int(math.ceil(self._max_sets / 2.0 + 0.5))
         self.set_base_attributes()
 
     def singles_match(self):
         server = random.randint(0, 1)
         while max(self._sets) < self._sets_required:
+            print("Set")
             result = self._set_winner(server)
             self._sets[result["winner"]] += 1
-            self._stats[result["set"]]["point"] = 1 + self._stats[result["winner"]].get("set", 0)
+            self._stats[result["winner"]]["set"] = 1 + self._stats[result["winner"]].get("set", 0)
+            if "tie break" in result and result["winner"] == 0:
+                self._sets_played += str(self._games[0]) + "-" + str(self._games[1]) + \
+                                     "(" + str(result["tie break"]) + ")" + ", "
+            elif "tie break" in result and result["winner"] == 1:
+                self._sets_played += str(self._games[0]) + "(" + str(result["tie break"]) + ")" + "-" + \
+                                     str(self._games[1]) + ", "
+            else:
+                self._sets_played += str(self._games[0]) + "-" + str(self._games[1]) + ", "
             self._games = [0, 0]
-            server = result["server"]
-        # TODO: Get reverse of all statistics at the end
+            server = result["winner"]
         self._get_statistics()
-        return {"winner": self._sets.index(max(self._sets))}
+        self.print_to_comm_file()
+        return {"winner": self._sets.index(max(self._sets)), "statistics": self._stats}
 
     def _get_statistics(self):
         stat_list = ["aces for", "first serve for", "second serve for", "first serve beaten", "second serve beaten",
@@ -57,6 +69,7 @@ class Match:
             server = (server + 1) % 2
             self._stats[result["winner"]]["games for"] = 1 + self._stats[result["winner"]].get("games for", 0)
             self._points = [0, 0]
+            print("Game")
             if self._games == [6, 6] and self._tie_breaks[self._set_number]:
                 self._in_tie_break = True
                 result = self._tie_break(server)
@@ -77,16 +90,20 @@ class Match:
         return {"winner": self._points.index(max(self._points))}
 
     def _play_point(self, server):
+        return_status = {"winner": -1, "rally": 1, "effect": "", "balance": 0}
         service = 0
         # In the box
         self._stats[server]["first serves for"] = 1 + self._stats[server].get("first serves for", 0)
         for service in range(2):
-            if serve.serve_in(self._players[server]["server aggression"][service], self._players[server]["serve"]) > \
+            if serve.serve_in(self._players[server]["serve aggression"][service], self._players[server]["serve"]) > \
                     random.random():
                 break
             elif service == 1:
                 self._stats[server]["double faults for"] = 1 + self._stats[server].get("double faults for", 0)
-                return {"winner": (server + 1) % 2, "result": 1}
+                return_status["winner"] = (server + 1) % 2
+                return_status["effect"] = "double fault"
+                self.commentary(False, return_status["winner"], return_status["effect"])
+                return return_status
             else:
                 # Second serve
                 self._stats[server]["second serves for"] = 1 + self._stats[server].get("second serves for", 0)
@@ -95,8 +112,13 @@ class Match:
         if serve.ace(serve_aggression, self._players[server]["serve"], self._players[server]["strength"],
                      self._players[(server + 1) % 2]["mobility"], self._players[server]["shot selection"]) > \
                 random.random():
-            self._stats[server]["aces for"] = 1 + self._stats[server].get("aces for", 0)
-            return {"winner": server, "rally": 1}
+            if service == 0:
+                self._stats[server]["aces for"] = 1 + self._stats[server].get("aces for", 0)
+
+                return_status["effect"] = "ace"
+            return_status["winner"] = server
+            self.commentary(False, return_status["winner"], return_status["effect"])
+            return return_status
         let = 1.0 if self._let else random.random()
 
         # Work out starting balance
@@ -105,7 +127,10 @@ class Match:
         balance -= rally_shots.shot_selection_effect(self._players[server]["shot selection"], 0)
         if let < 0.015:
             self._stats[server]["let winners for"] = 1 + self._stats[server].get("let winners for", 0)
-            return {"winner": (server + 1) % 2, "result": 1}
+            return_status["winner"] = (server + 1) % 2
+            return_status["effect"] = "let loss"
+            self.commentary(False, return_status["winner"], return_status["effect"])
+            return return_status
         elif let < 0.03:
             self._stats[server]["let bounce for"] = 1 + self._stats[server].get("let bounce for", 0)
             balance = 0
@@ -116,8 +141,21 @@ class Match:
         winner_list = "won" if result["winner"] == server else "lost"
         self._stats[service][service_str + " serve " + winner_list[0]] = \
             1 + self._stats[service].get(service_str + " serve " + winner_list, 0)
-
-        return {"winner": result["winner"], "rally": result["rally"] + 1}
+        return_status["winner"] = result["winner"]
+        return_status["rally"] = result["rally"] + 1
+        return_status["balance"] = result["balance"]
+        if result["balance"] < -50:
+            return_status["effect"] = "winner"
+        elif result["balance"] > 20:
+            return_status["effect"] = "unforced error"
+        elif result["rally"] + 1 > 5:
+            return_status["effect"] = "long rally"
+        elif result["rally"] + 1 < 3:
+            return_status["effect"] = "short rally"
+        else:
+            return_status["effect"] = "generic"
+        self.commentary(False, return_status["winner"], return_status["effect"])
+        return return_status
 
     def set_base_attributes(self):
         for i in range(2):
@@ -145,35 +183,41 @@ class Match:
                     (base_val * self._players[i]["stamina"] / 500.0 + 1 - base_val)
 
     def print_to_comm_file(self):
+        commentary_total = ""
+        for element in self._commentary:
+            commentary_total += element + os.linesep
+        print("XXX")
         with open(self._commentary_file, "w") as com_file:
-            yaml.safe_dump(self._commentary, com_file)
+            for element in self._commentary:
+                com_file.write(element)
+                com_file.write(os.linesep)
 
-    def commentary(self, tie_break, points_required=4):
+    def commentary(self, tie_break, winner, effect, points_required=4):
+        # TODO: Need to actually call
         com_score = commentary.calc_game_score(self._points)
         com_line = self._sets_played + str(self._games[0]) + "-" + str(self._games[1]) + ", " + \
             com_score[0] + " : " + com_score[1]
         moment = self.calc_special_moment(tie_break, points_required=points_required)
-        total = 4
-        if moment["moment"] == "None":
-            total = 3
+        total = 3 if moment["moment"] == "None" else 4
         if random.randint(1, total) == 1:
-            commentary.basic_comm_line(1, 1, 1, 1, 1)
+            com_line += " " + self.basic_comm_line(moment, winner, effect)
         self._commentary.append(com_line)
 
-    def basic_comm_line(self, result, moment, server):
+    def basic_comm_line(self, moment, winner, basic):
+        with open(os.environ["TENNIS_HOME"] + "//matches//commentary.yaml", "r") as com_file:
+            commentary_file = yaml.safe_load(com_file)
         if moment["moment"] != "None":
-            pass
-        # Use basic, figure out exact moment from winner, server, rally, balance
-        basic = "winner" if result["balance"] < -40 else "unforced error" if result["balance"] > 20 else ""
-        basic += "long rally" if result["rally"] < -40 else "short rally" if result["balance"] > 20 else ""
-        # Add in double fault, aces - replace the above if used
-        # Maybe do this when we add it to the stats
-        if result["balance"] < -40:
-            basic = "winner"
-        elif result["balance"] > 20:
-            basic = "unforced error"
+            line = commentary_file[moment["moment"]].format(self._players[winner]["name"])
+            if self._championship_match:
+                line.replace("match", "championship")
+        else:
+            if basic == '':
+                line = commentary_file["generic"]
+            else:
+                line = commentary_file[basic]
+            line = line.format(self._players[winner]["name"], self._players[(winner + 1) % 2]["name"])
         # Have a file that has different scenarios upcoming
-        line = "{}   {}".format(self._players[0]["name"], self._players[1]["name"])
+        return line
 
     def calc_special_moment(self, tie_break, points_required=4):
         game_point = [True if self._points[player] >= points_required - 1 and
@@ -196,6 +240,6 @@ class Match:
                            "set game": set_game, "set point": set_point, "game point": game_point}
         for moment in dict_of_moments:
             for player in range(2):
-                if dict_of_moments[moment[player]]:
+                if dict_of_moments[moment][player]:
                     return {"player": player, "moment": moment}
         return {"player": "NA", "moment": "None"}

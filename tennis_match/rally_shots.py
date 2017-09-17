@@ -66,7 +66,7 @@ def rally(players, initial_balance, next_hit):
         # print("{}:  {}:  {}".format(balance, old_balance, balance_eff))
     # print(next_hit)
     # print("End rally")
-    return {"winner": player, "rally": count, "end_balance": balance}
+    return {"winner": player, "rally": count, "balance": balance}
 
 
 def balance_change(skill, aggression, balance, mobility, strength):

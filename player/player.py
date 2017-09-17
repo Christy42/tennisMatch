@@ -5,7 +5,7 @@ import pandas
 
 from random import randint
 
-from utility.utility import repeated_random, smallest_missing_in_list
+from utility.utility import repeated_random, smallest_missing_in_list, add_dict
 from competitions.competition_schedule import sign_up_for_competition
 
 
@@ -28,7 +28,7 @@ class Player:
             self._fitness = stats["fitness"]
             self._orders = stats["orders"]
             self._ranking_points = stats["ranking points"]
-            self._player_stats = stats["player stats"]
+            self._player_stats = stats.get("player stats", {})
             self._id = stats["id"]
             self._nationality = stats["nationality"]
             self._name = stats["name"]
@@ -44,6 +44,10 @@ class Player:
             self._mobility_max = stats["max mobility"]
             self._strength_max = stats["max strength"]
             self._fitness_max = stats["max fitness"]
+            if "stat file" in stats:
+                self._stat_file = stats["stat file"]
+            else:
+                self._stat_file = os.environ["TENNIS_HOME"] + "//players/stats/Player_" + str(self._id) + ".yaml"
         else:
             with open(os.environ["TENNIS_HOME"] + "//players//player_ids.yaml", "r") as file:
                 id_used = yaml.safe_load(file)
@@ -72,6 +76,7 @@ class Player:
             self._name = self.name_player()
             self._tournaments = {}
             self._mandatory = False
+            self._stat_file = os.environ["TENNIS_HOME"] + "//players/stats/Player_" + self._id + ".yaml"
             self.create_file()
 
     def create_physical(self, optimal):
@@ -126,6 +131,18 @@ class Player:
         second_name = names[set_nation]["second"][random_second]
         return first_name + " " + second_name
 
+    def update_stat_file(self, stats, year, competition):
+        self._player_stats = stats if "overall" not in self._player_stats \
+            else add_dict(stats, self._player_stats["overall"])
+
+        self._player_stats = stats if str(year) not in self._player_stats \
+            else add_dict(stats, self._player_stats[str(year)])
+
+        self._player_stats = stats if competition not in self._player_stats \
+            else add_dict(stats, self._player_stats[competition])
+        with open(self._stat_file, "w") as stat_file:
+            yaml.safe_dump(self._player_stats, stat_file)
+
     def apply_court(self):
         pass
 
@@ -138,10 +155,11 @@ class Player:
         mobility, serve = self.apply_height()
         attributes = {"stamina": self._stamina, "serve": serve, "mobility": mobility, "name": self._name,
                       "accuracy": self._accuracy, "strength": self._strength, "shot selection": self._shot_selection,
-                      "fitness": self._fitness, "id": self._id, "player stats": self._player_stats,
-                      "first serve aggression": self._orders[order]["first serve aggression"],
-                      "second serve aggression": self._orders[order]["second serve aggression"],
-                      "aggression": self._orders[order]["aggression"], "strategy": self._orders[order]["strategy"]}
+                      "fitness": self._fitness, "player stats": self._player_stats, "stat file": self._stat_file,
+                      "id": self._id, "aggression": self._orders[order]["aggression"],
+                      "strategy": self._orders[order]["strategy"],
+                      "serve aggression": [self._orders[order]["first serve aggression"],
+                                           self._orders[order]["second serve aggression"]]}
         return attributes
 
     def set_physical(self, optimal, basis):
@@ -160,11 +178,6 @@ class Player:
     def set_stats(self):
         # TODO: Consider using this for stats, maybe just for writing them here
         # Need to read them in before setting them and then printing them, the base stats idea might work later on
-        if os.path.isfile(os.environ["TENNIS_HOME"] + "//players//stats//baseStats.yaml"):
-            with open(os.environ["TENNIS_HOME"] + "//players//stats//baseStats.yaml", "r") as base_file:
-                self._player_stats = yaml.safe_load(base_file)
-        else:
-            self._player_stats = {}
         with open(os.environ["TENNIS_HOME"] + "//players//stats//Player_" + str(self._id) + ".yaml", "w") as stat_file:
             yaml.safe_dump(self._player_stats, stat_file)
 
@@ -172,15 +185,15 @@ class Player:
         self._stamina = int(round(value, 0))
 
     def update_player_stats(self, statistics, competition, year):
-        if str(year) not in self._player_stats:
-            self._player_stats[str(year)] = {}
-        if "total" not in self._player_stats:
-            self._player_stats["total"] = {}
+        self._player_stats[str(year)] = {} if str(year) not in self._player_stats else self._player_stats[str(year)]
+        self._player_stats["total"] = {} if "total" not in self._player_stats else self._player_stats["total"]
+        self._player_stats[competition] = {} if competition not in self._player_stats \
+            else self._player_stats[competition]
         for element in statistics:
             self._player_stats["total"][element] = statistics[element] + self._player_stats["total"].get(element, 0)
             self._player_stats[str(year)][element] = statistics[element] + self._player_stats[str(year)].get(element, 0)
-            self._player_stats["total"][competition] = statistics[element]
-        self.create_file(id_known=True)
+            self._player_stats[competition][element] = statistics[element]
+        self.set_stats()
 
     def train(self, training):
         self.create_file(id_known=True)
@@ -235,7 +248,7 @@ def server_ai(year):
     for player_file in os.listdir(os.environ["TENNIS_HOME"] + "//players//players"):
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + player_file) as file:
             player = yaml.safe_load(file)
-        if True: # player["bot"]:
+        if player["bot"]:
             if player["junior"]:
                 junior.update({player["id"]: player["name"]})
             else:

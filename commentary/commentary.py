@@ -7,7 +7,7 @@ def basic_comm_line(names, sets_previous, current_set, current_game, server):
 
 def calc_game_score(score):
     score_map = {0: "Love", 1: "15", 2: "30", 3: "40"}
-    com_score = [score_map.get(int(score_map[i], i)) for i in score]
+    com_score = [score_map.get(i, "0") for i in score]
     if int(min(score)) >= 3:
         com_score = ["D", "D"] if score[0] == score[1] \
             else ["A" if score[0] > score[1] else "-", "A" if score[0] < score[1] else "-"]
