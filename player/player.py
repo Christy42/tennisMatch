@@ -17,66 +17,53 @@ class Player:
         if file:
             with open(file, "r") as player_file:
                 stats = yaml.safe_load(player_file)
-            self._shot_selection = stats["shot selection"]
-            self._strength = stats["strength"]
-            self._accuracy = stats["accuracy"]
-            self._serve = stats["serve"]
-            self._mobility = stats["mobility"]
-            self._height = stats["height"]
-            self._age = stats["age"]
-            self._junior = stats["junior"]
-            self._fitness = stats["fitness"]
-            self._orders = stats["orders"]
-            self._ranking_points = stats["ranking points"]
-            self._player_stats = stats.get("player stats", {})
-            self._id = stats["id"]
-            self._nationality = stats["nationality"]
-            self._name = stats["name"]
-            self._tournaments = stats["tournaments"]
-            self._stamina = stats["stamina"]
-            self._strength_basis = stats["strength basis"]
-            self._mobility_basis = stats["strength basis"]
-            self._fitness_basis = stats["fitness basis"]
-            self._age_factor = stats["age factor"]
-            self._mandatory = stats["mandatory"]
-            self._taken = stats["taken"]
-            self._bot = stats["bot"]
-            self._mobility_max = stats["max mobility"]
-            self._strength_max = stats["max strength"]
-            self._fitness_max = stats["max fitness"]
-            if "stat file" in stats:
-                self._stat_file = stats["stat file"]
-            else:
-                self._stat_file = os.environ["TENNIS_HOME"] + "//players/stats/Player_" + str(self._id) + ".yaml"
         else:
-            with open(os.environ["TENNIS_HOME"] + "//players//player_ids.yaml", "r") as file:
-                id_used = yaml.safe_load(file)
-            self._taken = "False"
-            self._player_stats = {}
-            self._bot = True
-            self._age_factor = int(repeated_random(-2, 2, 2))
-            self._age = int(repeated_random(13, 16, 2))
-            self._shot_selection = int(repeated_random(15, 35, 3))
-            self._strength_basis, self._strength_max, self._strength = self.create_physical(self._strength_optimal)
-            self._mobility_basis, self._mobility_max, self._mobility = self.create_physical(self._mobility_optimal)
-            self._fitness_basis, self._fitness_max, self._fitness = self.create_physical(self._fitness_optimal)
-            self._junior = True
-            self._accuracy = int(repeated_random(15, 35, 3))
-            self._serve = int(repeated_random(15, 35, 3))
-            self._height = int(repeated_random(135, 172, 4))
+            stats = {}
+        with open(os.environ["TENNIS_HOME"] + "//players//player_ids.yaml", "r") as file:
+            id_used = yaml.safe_load(file)
+        self._shot_selection = stats.get("shot selection", int(repeated_random(15, 35, 3)))
+        self._accuracy = stats.get("accuracy", int(repeated_random(15, 35, 3)))
+        self._serve = stats.get("serve", int(repeated_random(15, 35, 3)))
+        self._height = stats.get("height", int(repeated_random(135, 172, 4)))
+        self._age = stats.get("age", int(repeated_random(13, 16, 2)))
+        if "height" in stats:
             for _ in range(13, self._age):
                 self._height += repeated_random(1, 9, 3)
-            self._stamina = 1000
-            self._orders = {"default": {"first serve aggression": 3, "second serve aggression": 2,
-                                        "aggression": 3, "strategy": "All Court"}}
-            self._ranking_points = {}
-            self._player_stats = {}
-            self._id = smallest_missing_in_list(id_used)
-            self._nationality = self.set_nationality(nation)
-            self._name = self.name_player()
-            self._tournaments = {}
-            self._mandatory = False
-            self._stat_file = os.environ["TENNIS_HOME"] + "//players/stats/Player_" + self._id + ".yaml"
+
+        self._junior = stats.get("junior", True)
+        self._orders = stats.get("orders", {"default": {"first serve aggression": 3, "second serve aggression": 2,
+                                            "aggression": 3, "strategy": "All Court"}})
+        self._ranking_points = stats.get("ranking points", {})
+        self._player_stats = stats.get("player stats", {})
+        self._id = stats.get("id", smallest_missing_in_list(id_used))
+        self._nationality = stats.get("nationality", self.set_nationality(nation))
+        self._name = stats.get("name", self.name_player())
+        self._tournaments = stats.get("tournaments", {})
+        self._stamina = stats.get("stamina", 1000)
+        self._age_factor = stats.get("age factor", int(repeated_random(-2, 2, 2)))
+        self._mandatory = stats.get("mandatory", False)
+        self._taken = stats.get("taken", "False")
+        self._bot = stats.get("bot", True)
+
+        self._strength_basis, self._strength_max, self._strength = self.create_physical(self._strength_optimal)
+        self._mobility_basis, self._mobility_max, self._mobility = self.create_physical(self._mobility_optimal)
+        self._fitness_basis, self._fitness_max, self._fitness = self.create_physical(self._fitness_optimal)
+
+        self._mobility_max = stats.get("max mobility", self._mobility_max)
+        self._strength_max = stats.get("max strength", self._strength_max)
+        self._fitness_max = stats.get("max fitness", self._fitness_max)
+
+        self._strength_basis = stats.get("strength basis", self._strength_basis)
+        self._mobility_basis = stats.get("mobility basis", self._mobility_basis)
+        self._mobility_basis = stats.get("mobility basis", self._mobility_basis)
+
+        self._strength = stats.get("strength", self._strength)
+        self._mobility = stats.get("mobility", self._mobility)
+        self._fitness = stats.get("fitness", self._fitness)
+
+        self._stat_file = stats.get("stat file",
+                                    os.environ["TENNIS_HOME"] + "//players/stats/Player_" + str(self._id) + ".yaml")
+        if stats is {}:
             self.create_file()
 
     def create_physical(self, optimal):

@@ -3,6 +3,7 @@ import datetime
 import yaml
 from player.player import Player
 from tennis_match.match import Match
+from competitions.run_competition import make_match_files
 
 
 def run_matches(date):
@@ -15,17 +16,15 @@ def run_matches(date):
 
 
 def run_match_competition(date, competition, directory):
-    print("C")
-    print(os.environ["TENNIS_HOME"] + "//matches//year " + date[:4] + "//" + competition)
     if not os.path.isdir(os.environ["TENNIS_HOME"] + "//matches//year " + date[:4] + "//" + competition):
         return 0
-    print("D")
     player_dict = {}
     match_details = []
-    with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" + competition,
-              "r") as comp_file:
+    competition_file = os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" + \
+        competition
+    print(competition_file)
+    with open(competition_file, "r") as comp_file:
         competition_stuff = yaml.safe_load(comp_file)
-    print("b")
     for match in os.listdir(os.environ["TENNIS_HOME"] + "//matches//year " + date[:4] + "//" + competition):
         if match[-15:-5] == date:
             with open(os.environ["TENNIS_HOME"] + "//matches//year " + date[:4] + "//" + competition + "//" + match) as\
@@ -37,7 +36,6 @@ def run_match_competition(date, competition, directory):
             for player in match_details[len(match_details) - 1]["player_ids"]:
                 player_dict.update({player: Player(file=os.environ["TENNIS_HOME"] + "//players//players/Player_" +
                                     player + ".yaml").create_game_dict()})
-    print("X")
     for i in range(len(match_details)):
         print(match_details[i]["player_ids"])
 
@@ -47,10 +45,6 @@ def run_match_competition(date, competition, directory):
         let = match["let"] if "let" in match else True
         games_required = match["games required"] if "games required" in match else 6
         match_players = [player_dict[player] for player in match["player_ids"]]
-        print(match_players[0]["name"])
-        print(match_players[1]["name"])
-        print(match_players[0]["id"])
-        print(match_players[1]["id"])
         match_class = Match(max_sets=match["sets"], players=match_players, tie_breaks=match["tie breaks"],
                             comm_file=match["commentary file"], games_required=games_required, deuce=deuce, let=let)
         game = match_class.singles_match()
@@ -67,6 +61,30 @@ def run_match_competition(date, competition, directory):
     with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" + competition,
               "w") as comp_file:
         yaml.safe_dump(competition_stuff, comp_file)
+    if roun == len(competition_stuff["days"]):
+        if "-qualification" in competition_file:
+            pass
+        else:
+            pass
+    else:
+        make_match_files(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date[:4]) + "//" + directory,
+                         competition, date[:4], roun + 1)
+
+
+def update_new_qualifications(competition, latest_round):
+    with open(competition, "r") as qualification_file:
+        qualification_data = yaml.safe_load(qualification_file)
+    with open(competition["actual file"], "r") as comp_file:
+        competition_data = yaml.safe_load(comp_file)
+    qualifiers = sorted(latest_round)
+    maximum_current = max(competition_data["ranks"])
+    extra_players = {}
+    for i in range(len(qualifiers)):
+        extra_players.update({maximum_current + i + 1: [qualification_data["ranks"][qualifiers[i]][0],
+                                                        qualification_data["ranks"][qualifiers[i]][1]]})
+    competition_data["ranks"].update(extra_players)
+    with open(competition.replace("-qualification", ""), "w") as comp_file:
+        yaml.safe_dump(competition_data, comp_file)
 
 
 run_matches("2000-01-06")

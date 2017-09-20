@@ -36,7 +36,6 @@ class Match:
     def singles_match(self):
         server = random.randint(0, 1)
         while max(self._sets) < self._sets_required:
-            print("Set")
             result = self._set_winner(server)
             self._sets[result["winner"]] += 1
             self._stats[result["winner"]]["set"] = 1 + self._stats[result["winner"]].get("set", 0)
@@ -69,7 +68,6 @@ class Match:
             server = (server + 1) % 2
             self._stats[result["winner"]]["games for"] = 1 + self._stats[result["winner"]].get("games for", 0)
             self._points = [0, 0]
-            print("Game")
             if self._games == [6, 6] and self._tie_breaks[self._set_number]:
                 self._in_tie_break = True
                 result = self._tie_break(server)
@@ -186,7 +184,6 @@ class Match:
         commentary_total = ""
         for element in self._commentary:
             commentary_total += element + os.linesep
-        print("XXX")
         with open(self._commentary_file, "w") as com_file:
             for element in self._commentary:
                 com_file.write(element)
