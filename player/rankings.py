@@ -49,10 +49,10 @@ def update_player_rankings(last_year):
         mandatory = player["mandatory"]
         competitions_all = player["tournaments"]
         competitions = {competition: competitions_all[competition] for competition in competitions_all
-                        if competitions_all[competition]["name"] != "World Tour Finals"}
+                        if competitions_all[competition]["event name"] != "World Tour Finals"}
         junior = get_ranking_points("junior", 6, 1000, competitions, last_year)
         junior_doubles = get_ranking_points("junior doubles", 6, 1000, competitions, last_year)
-        doubles = get_ranking_points("junior doubles", 14, 1000, competitions, last_year)
+        doubles = get_ranking_points("doubles", 14, 1000, competitions, last_year)
         if junior is not None:
             junior = {"points": junior["points"] + junior_doubles["points"] / 4.0,
                       "tie breakers": junior["tie breakers"]}
@@ -62,24 +62,24 @@ def update_player_rankings(last_year):
             senior = {"points": senior["points"], "tie breakers": senior_tie_breaks["tie breakers"]}
         else:
             other_comps = {week: competitions[week] for week in competitions
-                           if competitions[week]["name"] not in mandatory_competitions}
+                           if competitions[week]["event name"] not in mandatory_competitions}
             other_comps = get_ranking_points("singles", 4, 0, other_comps, last_year)["tie breakers"]
             del other_comps["random 1"]
             del other_comps["random 2"]
             del other_comps["ATP Score"]
-            list_comps = [other_comps[tier]["name"] for tier in other_comps]
+            list_comps = [other_comps[tier]["event name"] for tier in other_comps]
             main_comps = {week: competitions[week] for week in competitions
-                          if competitions[week]["name"] in mandatory_competitions + list_comps}
+                          if competitions[week]["event name"] in mandatory_competitions + list_comps}
             senior = get_ranking_points("singles", 18, 1000, main_comps, last_year)
             other_comps = {week: competitions_all[week] for week in competitions_all
-                           if competitions_all[week]["name"] not in mandatory_competitions}
+                           if competitions_all[week]["event name"] not in mandatory_competitions}
             other_comps = get_ranking_points("singles", 4, 0, other_comps, last_year)["tie breakers"]
             del other_comps["random 1"]
             del other_comps["random 2"]
             del other_comps["ATP Score"]
-            list_comps = [other_comps[tier]["name"] for tier in other_comps]
+            list_comps = [other_comps[tier]["event name"] for tier in other_comps]
             main_comps = {week: competitions_all[week] for week in competitions
-                          if competitions[week]["name"] in mandatory_competitions + list_comps}
+                          if competitions[week]["event name"] in mandatory_competitions + list_comps}
             senior_tie_breaks = get_ranking_points("singles", 18, 1000, main_comps, last_year)
             senior = {"points": senior["points"], "tie breakers": senior_tie_breaks["tie breakers"]}
         competitions = {date_comp: competitions[date_comp] for date_comp in competitions
@@ -92,7 +92,7 @@ def update_player_rankings(last_year):
                      0.25 * wimbledon_one_year["points"], "tie breakers": wimbledon_two_year["tie breakers"]}
         player["ranking points"] = {"senior": senior, "doubles": doubles, "junior": junior, "wimbledon": wimbledon}
         finals = {competition_name: competitions[competition_name] for competition_name in competitions
-                  if competitions[competition_name]["name"] == "World Tour Finals"}
+                  if competitions[competition_name]["event name"] == "World Tour Finals"}
         if finals != {}:
             senior["points"] += finals["World Tour Finals"]["score"]
         with open(os.environ["TENNIS_HOME"] + "//players//players//" + file, "w") as player_file:
@@ -115,8 +115,8 @@ def update_player_rankings(last_year):
 
 
 def rankings_construction(rankings, player):
-    senior_construction = {"name": player["name"], "ranking": rankings["points"]}
-    tie_break_construction = {"Level " + str(level): rankings["tie breakers"][level]["score"]
+    senior_construction = {"event name": player["name"], "ranking": rankings["points"]}
+    tie_break_construction = {"Level " + str(level): rankings["tie breakers"][level]["ranking points"]
                               for level in range(1, 18) if level in rankings["tie breakers"].keys()}
     tie_break_construction.update({"ATP Score": rankings["tie breakers"]["ATP Score"],
                                    "random 1": rankings["tie breakers"]["random 1"],
@@ -126,28 +126,54 @@ def rankings_construction(rankings, player):
 
 
 def get_ranking_points(style, number, tie_break_level, competitions, last_year):
+    # TODO: Need to add in max tournament score, a todo later though
+
     main_tie_break = 0
-    tie_breakers = {i: {"level": 0, "score": 0, "name": "default"} for i in range(1, number + 1)}
+    max_tournament_score = 0
+    # Default N number of competitions to replace
+    tie_breakers = {i: {"event level": style, "ranking points": 0, "event name": "default"}
+                    for i in range(1, number + 1)}
     if competitions is None:
         return {"tie breakers": {"random 1": random.random(), "random 2": random.random(), "ATP Score": 0}, "points": 0}
     senior_comps = {date_comp: competitions[date_comp] for date_comp in competitions
-                    if date_comp > last_year and competitions[date_comp]["style"] == style}
+                    if datetime.datetime.strptime(date_comp, "%Y-%m-%d") > last_year and
+                    competitions[date_comp]["event level"] == style}
     if senior_comps is None:
         return {"tie breakers": {"random 1": random.random(), "random 2": random.random(), "ATP Score": 0}, "points": 0}
+    # weird way to do this, redo it
+
     for competition in senior_comps:
-        if senior_comps[competition]["level"] >= tie_break_level:
-            main_tie_break += senior_comps[competition]["score"]
+        print(senior_comps[competition])
+        # This tie break is how many points from 1000+ level events in total
+        if senior_comps[competition].get("ATP level", 0) >= tie_break_level:
+            main_tie_break += senior_comps[competition]["ranking points"]
+        print(tie_breakers)
         for tier in tie_breakers:
-            if tie_breakers[tier]["score"] < senior_comps[competition]["score"]:
+            if tie_breakers[tier]["ranking points"] < senior_comps[competition]["ranking points"]:
                 tie_breakers = {level: tie_breakers[level - 1 * (level > tier)] for level in tie_breakers}
-                tie_breakers[tier] = {"score": senior_comps[competition]["score"],
-                                      "name": senior_comps[competition]["name"],
-                                      "level": senior_comps[competition]["level"]}
+                tie_breakers[tier] = {"ranking points": senior_comps[competition]["ranking points"],
+                                      "event name": senior_comps[competition]["event name"],
+                                      "level": senior_comps[competition].get("ATP level", 0)}
                 break
-    ranking_points = sum([tie_breakers[score]["score"] for score in tie_breakers])
+    ranking_points = sum([tie_breakers[score]["ranking points"] for score in tie_breakers])
 
     tie_breakers = {element: tie_breakers[element] for element in tie_breakers
-                    if tie_breakers[element]["name"] != "default"}
+                    if tie_breakers[element]["event name"] != "default"}
     tie_breakers.update({"random 1": random.random(), "random 2": random.random(), "ATP Score": main_tie_break})
     result = {"points": ranking_points, "tie breakers": tie_breakers}
     return result
+
+
+# I need format to be competitions = {date: {event level: level, ranking points: score, event name: name, court: court}}
+def assign_ranking_points(ranking_points, competition_name, surface, level, competition_date, result=""):
+    for player in ranking_points:
+        tournament_dict = {competition_date: {"event level": level, "ranking points": ranking_points[player],
+                           "event name": competition_name, "court": surface, "result": result}}
+        with open(os.environ["TENNIS_HOME"] + "//players//players//Player_" + str(player) + ".yaml", "r") as player_fil:
+            player_stuff = yaml.safe_load(player_fil)
+        player_stuff["tournaments"].update(tournament_dict)
+        with open(os.environ["TENNIS_HOME"] + "//players//players//Player_" + str(player) + ".yaml", "w") as player_fil:
+            yaml.safe_dump(player_stuff, player_fil)
+
+
+update_player_rankings("1999-01-01")

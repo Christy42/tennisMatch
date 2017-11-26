@@ -3,12 +3,14 @@ import datetime
 import yaml
 from player.player import Player
 from tennis_match.match import Match
-from competitions.run_competition import make_match_files
+from competitions.run_competition import make_match_files, generate_points
+from player.rankings import assign_ranking_points
 
 
 def run_matches(date):
     for directory in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//"):
         if os.path.isdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory):
+
             for file in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory):
                 if "ENDED" not in file and \
                    datetime.datetime.strptime(date, "%Y-%m-%d") >= datetime.datetime.strptime(file[:10], "%Y-%m-%d"):
@@ -22,7 +24,6 @@ def run_match_competition(date, competition, directory):
     match_details = []
     competition_file = os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" + \
         competition
-    print(competition_file)
     with open(competition_file, "r") as comp_file:
         competition_stuff = yaml.safe_load(comp_file)
     for match in os.listdir(os.environ["TENNIS_HOME"] + "//matches//year " + date[:4] + "//" + competition):
@@ -63,9 +64,18 @@ def run_match_competition(date, competition, directory):
         yaml.safe_dump(competition_stuff, comp_file)
     if roun == len(competition_stuff["days"]):
         if "-qualification" in competition_file:
-            pass
+            update_new_qualifications(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" +
+                                      directory + "//" + competition, next_round)
+            os.rename(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" +
+                      competition, os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory +
+                      "//" + competition.replace(".yaml", "ENDED.yaml"))
         else:
-            pass
+            points = generate_points(competition_stuff)
+            assign_ranking_points(points, competition_stuff["name"], competition_stuff["surface"],
+                                  directory, competition_stuff["days"][0])
+            os.rename(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory + "//" +
+                      competition, os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + directory +
+                      "//" + competition.replace(".yaml", "ENDED.yaml"))
     else:
         make_match_files(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date[:4]) + "//" + directory,
                          competition, date[:4], roun + 1)
@@ -74,7 +84,7 @@ def run_match_competition(date, competition, directory):
 def update_new_qualifications(competition, latest_round):
     with open(competition, "r") as qualification_file:
         qualification_data = yaml.safe_load(qualification_file)
-    with open(competition["actual file"], "r") as comp_file:
+    with open(qualification_data["actual file"], "r") as comp_file:
         competition_data = yaml.safe_load(comp_file)
     qualifiers = sorted(latest_round)
     maximum_current = max(competition_data["ranks"])
@@ -83,9 +93,9 @@ def update_new_qualifications(competition, latest_round):
         extra_players.update({maximum_current + i + 1: [qualification_data["ranks"][qualifiers[i]][0],
                                                         qualification_data["ranks"][qualifiers[i]][1]]})
     competition_data["ranks"].update(extra_players)
-    with open(competition.replace("-qualification", ""), "w") as comp_file:
+    with open(qualification_data["actual file"], "w") as comp_file:
         yaml.safe_dump(competition_data, comp_file)
 
 
-run_matches("2000-01-06")
+# run_matches("2000-01-11")
 # OK How to reset?

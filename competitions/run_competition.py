@@ -6,6 +6,8 @@ import datetime
 import pandas
 
 
+# TODO: Change competition into a classes?  Need to fully plan out how it looks
+
 from utility.utility import shift_bit_length
 
 
@@ -81,20 +83,23 @@ def create_competition_file(competition, start_date):
     schedule = create_schedule(competition_stats["numbers"], competition_stats["seeded"], start_date)
     if competition_stats["qualifying number"] > 0:
         qualifying_number = competition_stats["qualifying number"] * 2 ** competition_stats["qualifying rounds"]
-        weekend_qualification = True if competition_stats["ranking points"]["W"] < 2000 else False
+        # weekend_qualification = True if competition_stats["ranking points"]["W"] < 2000 else False
         schedule_qualification = create_schedule(qualifying_number, competition_stats["qualifying seeds"], start_date,
-                                                 weekend_qualification, competition_stats["qualifying rounds"])
+                                                 weekend_qualification=True,
+                                                 qualification_rounds=competition_stats["qualifying rounds"])
         schedule_qualification.update(competition_stats)
         schedule_qualification["sets"] = 3
         schedule_qualification["tie breaks"] = [True, True, True]
-        schedule_qualification["actual_file"] = os.environ["TENNIS_HOME"] + "//competitions//year " + start_date[:4] + \
+        schedule_qualification["actual file"] = os.environ["TENNIS_HOME"] + "//competitions//year " + start_date[:4] + \
             "//" + folder + "//" + schedule["days"][0] + " " + competition.split("((")[0] + " " + \
             competition.split("((")[1][:2].replace("-", "") + ".yaml"
         with open(os.environ["TENNIS_HOME"] + "//competitions//year " + start_date[:4] + "//" + folder + "//" +
                   schedule_qualification["days"][0] + " " + competition.split("((")[0] + "-qualification " +
                   competition.split("((")[1][:2].replace("-", "") + ".yaml", "w") as file:
             yaml.safe_dump(schedule_qualification, file)
-
+        schedule["qualification file"] = os.environ["TENNIS_HOME"] + "//competitions//year " + start_date[:4] + "//" + \
+            folder + "//" + schedule_qualification["days"][0] + " " + competition.split("((")[0] + "-qualification " + \
+            competition.split("((")[1][:2].replace("-", "") + ".yaml"
     # with open(os.environ["TENNIS_HOME"] + "//competitions//year " + year + "//" + competition["file name"] + ".yaml",
     # "w") as file:
     #     yaml.safe_dump(competition_stats, file)
@@ -108,24 +113,26 @@ def create_competition_file(competition, start_date):
 
 # Create the schedule for a competition (or qualification)
 def create_schedule(numbers, seeded_players, start_date, weekend_qualification=False, qualification_rounds=999):
+    # TODO: Maybe redo?  Have two days as a specific pointer?
     sorting = create_groups(numbers, seeded_players)
     final = []
-    start_day = 1
+    start_day = 0
     for i in range(len(sorting)):
         final += sorting[i]
     sub_set = final[int(len(final) / 2):]
     sub_set = sub_set[::-1]
     final = final[:int(len(final) / 2)] + sub_set
-    days = [(start_day + x * 2) % 7 for x in range(int(log(numbers, 2)))]
+    days = [(start_day + x) % 7 for x in range(int(log(numbers, 2)))]
     days = days[:min(qualification_rounds, len(days))]
-    if weekend_qualification:
-        days = [-1] * (len(days) - int(len(days) / 2.0)) + [0] * int(len(days) / 2.0)
+    if qualification_rounds < 999 and weekend_qualification:
+        days = [days[i] - 2 for i in range(len(days))]
     elif qualification_rounds < 999:
         days = [days[i] - 7 for i in range(len(days))]
     if days[len(days) - 1] == 6 or days[len(days) - 1] == 1:
         days[len(days) - 1] = 0
     days = [(datetime.datetime.strptime(start_date, "%Y-%m-%d") + datetime.timedelta(days[i])).strftime("%Y-%m-%d")
             for i in range(len(days))]
+    days.sort()
     ans = {"round 1": final, "days": days}
     return ans
 
@@ -180,22 +187,16 @@ def sort_out_seeding(date):
     for style in styles:
         for file in data_frame[style].index:
             for i in range(1 + ("-qualification" in file)):
-                if i == 0 and "-qualification" in file:
-                    file_signifier = file[10:].replace("-qualification", " ")
-                    for file_c in os.listdir(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" +
-                                             style):
-                        if file_signifier in file_c:
-                            if datetime.datetime.strptime(file_c[:10], "%Y-%m-%d") <= \
-                               datetime.datetime.strptime(file[:10], "%Y-%m-%d") + datetime.timedelta(days=7):
-                                file_temp = file_c
+                if "-qualification" in file and i == 0:
+                    with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style + "//" +
+                              file, "r") as qualification_file:
+                        actual_file = yaml.safe_load(qualification_file)["actual file"]
                 else:
-                    file_temp = file
-
-                with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style + "//" +
-                          file_temp, "r") \
-                        as comp_file:
+                    actual_file = os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style + \
+                                  "//" + file
+                with open(actual_file, "r") as comp_file:
                     competition = yaml.safe_load(comp_file)
-                if "qualification" in file:
+                if "qualification" in actual_file:
                     print("qualification {}".format(file))
                     number = 2 ** competition["qualifying rounds"] * competition["qualifying number"]
                 else:
@@ -203,7 +204,6 @@ def sort_out_seeding(date):
                     number = competition["numbers"] - competition["qualifying number"]
                 competition["sign ups"] = {id_number: competition["sign ups"][id_number]
                                            for id_number in competition["sign ups"] if id_number not in used_list}
-                print(file_temp)
                 players = cut_players(style_ranks[style], competition["sign ups"], number)
                 if type(players) != str:
                     competition["ranks"] = {i + 1:
@@ -211,8 +211,7 @@ def sort_out_seeding(date):
                                              str(players.index[i])]
                                             for i in range(len(players.index))}
                     used_list += [players.index[i] for i in range(len(players.index))]
-                    with open(os.environ["TENNIS_HOME"] + "//competitions//year " + date[:4] + "//" + style + "//" +
-                              file_temp, "w") as comp_file:
+                    with open(actual_file, "w") as comp_file:
                         yaml.safe_dump(competition, comp_file)
 
 
@@ -303,8 +302,62 @@ def all_match_files(date, round_number):
             if date in file:
                 make_match_files(os.environ["TENNIS_HOME"] + "//competitions//year " + str(date[:4]) + "//" + style,
                                  file, date[:4], round_number)
-sort_out_seeding("2000-01-08")
-# all_match_files("2000-01-06", 1)
+
+
+def generate_mapping(ranking_points, round_1):
+    basic_mapping = {"W": 1, "F": 2, "SF": 4, "QF": 8}
+    cur_round = 1
+    while True:
+        if "R" + str(cur_round) not in ranking_points:
+            break
+        basic_mapping.update({"R" + str(cur_round): int(len(round_1) / cur_round)})
+        cur_round += 1
+    final_mapping = {basic_mapping[element]: ranking_points[element] for element in basic_mapping}
+    return final_mapping
+
+
+def split_into_matches(round_list):
+    match = []
+    if len(round_list) <= 1 or len(round_list) % 2 == 1:
+        return [round_list]
+    for i in range(int(len(round_list) / 2.0)):
+        match.append([round_list[2 * i], round_list[2 * i + 1]])
+    return match
+
+
+def get_opponents(round_list, seed):
+    matches = split_into_matches(round_list)
+    for element in matches:
+        if seed in element:
+            for player in element:
+                if player != seed:
+                    return player
+    return seed
+
+
+def generate_points(competition):
+    # TODO: Need to output the level they reached as well I guess
+    # TODO: Add in the ATP level of the competition
+    # TODO: Need to deal with qualification ranking points
+    key = {b: competition["ranks"][b][1] for b in competition["ranks"]}
+    mapping = generate_mapping(competition["ranking points"], competition["round 1"])
+    rounds = {round_no: competition[round_no] for round_no in competition if "round" in round_no}
+    seeds_to_points = {}
+    for i in range(len(rounds) - 1, 0, -1):
+        if i > 1:
+            split_into_matches(rounds["round " + str(i - 1)])
+        for element in rounds["round " + str(i)]:
+            opponent = get_opponents(rounds["round " + str(i - 1)], element) if i > 1 else element
+            if element not in seeds_to_points and opponent in key:
+                seeds_to_points[element] = mapping[len(rounds["round " + str(i)])]
+    id_to_points = {key[element]: seeds_to_points[element] for element in key}
+    return id_to_points
+
+
+# print(create_schedule(32, 8, "2000-01-08", True, 2))
+# print(create_schedule(32, 8, "2000-01-08"))
+# sort_out_seeding("2000-01-05")
+# all_match_files("2000-01-07", 1)
 # create_competition_files()
 # create_competition_config_file(name="Qatar Open", numbers=128, seeded=8, qualifying_rounds=2,
 #                                ranking_points={"F": 1200, "Q": 25, "Q1": 0, "Q2": 8, "Q3": 16, "QF": 360, "R1": 10,

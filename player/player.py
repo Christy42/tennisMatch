@@ -26,7 +26,7 @@ class Player:
         self._serve = stats.get("serve", int(repeated_random(15, 35, 3)))
         self._height = stats.get("height", int(repeated_random(135, 172, 4)))
         self._age = stats.get("age", int(repeated_random(13, 16, 2)))
-        if "height" in stats:
+        if "height" not in stats:
             for _ in range(13, self._age):
                 self._height += repeated_random(1, 9, 3)
 
@@ -63,6 +63,13 @@ class Player:
 
         self._stat_file = stats.get("stat file",
                                     os.environ["TENNIS_HOME"] + "//players/stats/Player_" + str(self._id) + ".yaml")
+        if os.path.isfile(os.environ["TENNIS_HOME"] + "//players/stats/Player_" + str(self._id) + ".yaml"):
+            with open(os.environ["TENNIS_HOME"] + "//players/stats/Player_" + str(self._id) + ".yaml", "r") as stat:
+                self._player_stats = yaml.safe_load(stat)
+        else:
+            with open(os.environ["TENNIS_HOME"] + "//players/stats/Player_" + str(self._id) + ".yaml", "w") as stat:
+                yaml.safe_dump(self._player_stats, stat)
+
         if stats is {}:
             self.create_file()
 

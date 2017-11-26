@@ -31,12 +31,13 @@ class Match:
         self._let = let
         self._stats = {i: {} for i in range(len(players))}
         self._sets_required = int(math.ceil(self._max_sets / 2.0 + 0.5))
+        self._server = random.randint(0, 1)
         self.set_base_attributes()
 
     def singles_match(self):
-        server = random.randint(0, 1)
+
         while max(self._sets) < self._sets_required:
-            result = self._set_winner(server)
+            result = self._set_winner()
             self._sets[result["winner"]] += 1
             self._stats[result["winner"]]["set"] = 1 + self._stats[result["winner"]].get("set", 0)
             if "tie break" in result and result["winner"] == 0:
@@ -48,7 +49,7 @@ class Match:
             else:
                 self._sets_played += str(self._games[0]) + "-" + str(self._games[1]) + ", "
             self._games = [0, 0]
-            server = result["winner"]
+            self._server = result["winner"]
         self._get_statistics()
         self.print_to_comm_file()
         return {"winner": self._sets.index(max(self._sets)), "statistics": self._stats}
@@ -61,25 +62,25 @@ class Match:
                 amended = element.replace(" for", " against").replace(" won", " beaten")
                 self._stats[player][amended] = self._stats[(player + 1) % 2].get(element, 0)
 
-    def _set_winner(self, server):
+    def _set_winner(self):
         while max(self._games) < self._games_required or diff(self._games) < 2:
-            result = self._play_game(server)
+            result = self._play_game()
             self._games[result["winner"]] += 1
-            server = (server + 1) % 2
+            self._server = (self._server + 1) % 2
             self._stats[result["winner"]]["games for"] = 1 + self._stats[result["winner"]].get("games for", 0)
             self._points = [0, 0]
             if self._games == [6, 6] and self._tie_breaks[self._set_number]:
                 self._in_tie_break = True
-                result = self._tie_break(server)
+                result = self._tie_break()
                 self._games[result["winner"]] += 1
                 self._points = [0, 0]
                 self._in_tie_break = False
                 break
         return {"winner": self._games.index(max(self._games))}
 
-    def _play_game(self, server):
+    def _play_game(self):
         while max(self._points) < 4 or (diff(self._points) < 2 and self._deuce):
-            result = self._play_point(server)
+            result = self._play_point()
             self._points[result["winner"]] += 1
             self._stats[result["winner"]]["points for"] = 1 + self._stats[result["winner"]].get("points for", 0)
             for i in range(2):
@@ -87,56 +88,59 @@ class Match:
                 self._players[i]["stamina"] = max(self._players[i]["stamina"], 0.0)
         return {"winner": self._points.index(max(self._points))}
 
-    def _play_point(self, server):
+    def _play_point(self):
         return_status = {"winner": -1, "rally": 1, "effect": "", "balance": 0}
         service = 0
         # In the box
-        self._stats[server]["first serves for"] = 1 + self._stats[server].get("first serves for", 0)
+        self._stats[self._server]["first serves for"] = 1 + self._stats[self._server].get("first serves for", 0)
         for service in range(2):
-            if serve.serve_in(self._players[server]["serve aggression"][service], self._players[server]["serve"]) > \
-                    random.random():
+            if serve.serve_in(self._players[self._server]["serve aggression"][service],
+                              self._players[self._server]["serve"]) > random.random():
                 break
             elif service == 1:
-                self._stats[server]["double faults for"] = 1 + self._stats[server].get("double faults for", 0)
-                return_status["winner"] = (server + 1) % 2
+                self._stats[self._server]["double faults for"] = \
+                    1 + self._stats[self._server].get("double faults for", 0)
+                return_status["winner"] = (self._server + 1) % 2
                 return_status["effect"] = "double fault"
                 self.commentary(False, return_status["winner"], return_status["effect"])
                 return return_status
             else:
                 # Second serve
-                self._stats[server]["second serves for"] = 1 + self._stats[server].get("second serves for", 0)
-        serve_aggression = self._players[server]["serve aggression"][service]
+                self._stats[self._server]["second serves for"] = \
+                    1 + self._stats[self._server].get("second serves for", 0)
+        serve_aggression = self._players[self._server]["serve aggression"][service]
         # Ace
-        if serve.ace(serve_aggression, self._players[server]["serve"], self._players[server]["strength"],
-                     self._players[(server + 1) % 2]["mobility"], self._players[server]["shot selection"]) > \
-                random.random():
+        if serve.ace(serve_aggression, self._players[self._server]["serve"], self._players[self._server]["strength"],
+                     self._players[(self._server + 1) % 2]["mobility"],
+                     self._players[self._server]["shot selection"]) > random.random():
             if service == 0:
-                self._stats[server]["aces for"] = 1 + self._stats[server].get("aces for", 0)
+                self._stats[self._server]["aces for"] = 1 + self._stats[self._server].get("aces for", 0)
 
                 return_status["effect"] = "ace"
-            return_status["winner"] = server
+            return_status["winner"] = self._server
             self.commentary(False, return_status["winner"], return_status["effect"])
             return return_status
         let = 1.0 if self._let else random.random()
 
         # Work out starting balance
-        balance = serve.serve_balance(serve_aggression, self._players[server]["serve"],
-                                      self._players[server]["strength"], self._players[(server + 1) % 2]["mobility"])
-        balance -= rally_shots.shot_selection_effect(self._players[server]["shot selection"], 0)
+        balance = serve.serve_balance(serve_aggression, self._players[self._server]["serve"],
+                                      self._players[self._server]["strength"],
+                                      self._players[(self._server + 1) % 2]["mobility"])
+        balance -= rally_shots.shot_selection_effect(self._players[self._server]["shot selection"], 0)
         if let < 0.015:
-            self._stats[server]["let winners for"] = 1 + self._stats[server].get("let winners for", 0)
-            return_status["winner"] = (server + 1) % 2
+            self._stats[self._server]["let winners for"] = 1 + self._stats[self._server].get("let winners for", 0)
+            return_status["winner"] = (self._server + 1) % 2
             return_status["effect"] = "let loss"
             self.commentary(False, return_status["winner"], return_status["effect"])
             return return_status
         elif let < 0.03:
-            self._stats[server]["let bounce for"] = 1 + self._stats[server].get("let bounce for", 0)
+            self._stats[self._server]["let bounce for"] = 1 + self._stats[self._server].get("let bounce for", 0)
             balance = 0
         # Run through the rally itself
-        result = rally_shots.rally(self._players, balance, (server + 1) % 2)
+        result = rally_shots.rally(self._players, balance, (self._server + 1) % 2)
         # Use rally attributes to get statistics
         service_str = "first" if service == 0 else "second"
-        winner_list = "won" if result["winner"] == server else "lost"
+        winner_list = "won" if result["winner"] == self._server else "lost"
         self._stats[service][service_str + " serve " + winner_list[0]] = \
             1 + self._stats[service].get(service_str + " serve " + winner_list, 0)
         return_status["winner"] = result["winner"]
@@ -156,16 +160,16 @@ class Match:
         return return_status
 
     def set_base_attributes(self):
-        for i in range(2):
+        for i in range(len(self._players)):
             for attribute in ["mobility", "accuracy", "strength", "serve"]:
                 self._players[i]["base " + attribute] = self._players[i][attribute]
 
-    def _tie_break(self, server):
+    def _tie_break(self):
         while max(self._points) < 7 or diff(self._points) < 2:
-            result = self._play_point(server)
+            result = self._play_point()
             self._points[result["winner"]] += 1
             self._stats[result["winner"]]["point"] = 1 + self._stats[result["winner"]].get("point", 0)
-            server = (server + 1) % 2 if sum(self._points) % 2 == 1 else server
+            self._server = (self._server + 1) % 2 if sum(self._points) % 2 == 1 else self._server
         return {"winner": self._points.index(max(self._points))}
 
     def stamina_effect(self):
